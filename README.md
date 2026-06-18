@@ -38,26 +38,9 @@ Translayer is an **AI-native document localization layer**: a format-neutral mid
 
 ## How it works
 
-```
-[ Input: pptx / docx / html / md / ... ]
-              │  Parse        (format plugin)
-              ▼
-        Document IR  ── format-neutral semantic representation
-        · meta:      source/target languages, doc type, glossary
-        · resources: fonts, images (and the text inside them)
-        · blocks[]:  text · semantic role · translatable? · layout
-                     · constraints (max length / shrinkable) · term hits
-                     · source ref (exact write-back coordinates)
-              │  Enrich       layout & role tagging · image-text detection
-              │               terminology / translation-memory matching
-              ▼
-              │  Localize      multi-engine routing · context + term + length
-              │               constraints · image re-render · quality loop
-              ▼
-              │  Render        precise lossless write-back · image replacement
-              ▼
-[ Output: any format, fully localized ]
-```
+<div align="center">
+  <img src="docs/architecture.png" alt="Translayer architecture: any format is parsed into a format-neutral Document IR, enriched, localized with multi-engine routing and in-image text translation, then rendered losslessly back to any format." width="720">
+</div>
 
 **One principle: everything is pluggable.** Formats (Parse/Render), engines (Localize), and intelligence (Enrich) are fully decoupled — so a better model is a tailwind, not a threat, and a new format is just one more parser.
 
