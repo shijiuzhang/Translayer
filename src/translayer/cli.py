@@ -14,6 +14,8 @@ def translate(
     from_lang: str = typer.Option("en", "--from", help="Source language"),
     to_lang: str = typer.Option("zh", "--to", help="Target language"),
     engine: str | None = typer.Option(None, "--engine", help="Translation engine key"),
+    ocr_engine: str | None = typer.Option(None, "--ocr-engine", help="OCR engine key (tesseract, cloud_vision, paddle, mock)"),
+    inpaint_engine: str | None = typer.Option(None, "--inpaint-engine", help="Inpaint engine key (pillow, opencv, lama)"),
     glossary: str | None = typer.Option(None, "--glossary", help="CSV glossary (source,target)"),
     no_images: bool = typer.Option(False, "--no-images", help="Skip in-image text translation"),
 ):
@@ -23,7 +25,9 @@ def translate(
     translate_document(
         input_path, output,
         source_lang=from_lang, target_lang=to_lang,
-        translation_engine=engine, glossary=glossary, images=not no_images,
+        translation_engine=engine, ocr_engine=ocr_engine,
+        inpaint_engine=inpaint_engine, glossary=glossary,
+        images=not no_images,
     )
     typer.echo(f"Wrote {output}")
 

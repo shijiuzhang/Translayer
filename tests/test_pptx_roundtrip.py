@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from translayer.parsers.pptx_parser import PptxParser
 from translayer.renderers.pptx_renderer import PptxRenderer
@@ -84,3 +87,36 @@ def test_roundtrip_preserves_structure(sample_pptx, tmp_path):
     assert len(src.slides) == len(dst.slides)
     for s1, s2 in zip(src.slides, dst.slides, strict=False):
         assert len(s1.shapes) == len(s2.shapes)
+
+
+def test_render_replaces_localized_image(sample_pptx, tmp_path):
+    """Localized image resources must be written back into the output pptx."""
+    parser, renderer = PptxParser(), PptxRenderer()
+    ir = parser.parse(sample_pptx, {})
+
+    assert len(ir.resources.images) == 1
+    image = ir.resources.images[0]
+
+    # Create a visibly different "localized" image.
+    localized_path = str(tmp_path / "localized.png")
+    from PIL import Image as PILImage
+    from PIL import ImageDraw
+
+    pil = PILImage.new("RGB", (image.width, image.height), "red")
+    ImageDraw.Draw(pil).text((10, 10), "localized", fill="white")
+    pil.save(localized_path)
+    image.localized_data_ref = localized_path
+
+    out = str(tmp_path / "image_out.pptx")
+    renderer.render(ir, sample_pptx, out)
+
+    # Verify the picture in the output has the new blob.
+    prs = Presentation(out)
+    pictures = [
+        shape for slide in prs.slides for shape in slide.shapes
+        if shape.shape_type == MSO_SHAPE_TYPE.PICTURE
+    ]
+    assert len(pictures) == 1
+    with open(localized_path, "rb") as fh:
+        expected_hash = hashlib.md5(fh.read()).hexdigest()
+    assert hashlib.md5(pictures[0].image.blob).hexdigest() == expected_hash

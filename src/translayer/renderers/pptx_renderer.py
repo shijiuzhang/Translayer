@@ -114,10 +114,24 @@ class PptxRenderer:
         try:
             with open(res.localized_data_ref, "rb") as fh:
                 new_blob = fh.read()
-            image_part = shape.image.part
-            image_part._blob = new_blob
-        except (AttributeError, OSError):
+            self._replace_image_blob(shape, new_blob)
+        except (AttributeError, OSError, KeyError, ValueError):
             pass
+
+    @staticmethod
+    def _replace_image_blob(shape, new_blob: bytes) -> None:
+        """Replace the underlying image part blob for a picture shape.
+
+        python-pptx 1.0+ exposes |Image| as an immutable value object, so we
+        locate the actual |ImagePart| via the shape's blip relationship and
+        overwrite its ``_blob``.
+        """
+        from pptx.oxml.ns import qn
+
+        blip = next(shape._element.iter(qn("a:blip")))
+        rId = blip.attrib[qn("r:embed")]
+        image_part = shape.part.related_part(rId)
+        image_part._blob = new_blob
 
 
 registry.register("renderer", "pptx")(PptxRenderer)
