@@ -82,6 +82,7 @@ class SourceRef(BaseModel):
         "shape_text", "table_cell", "image_region",
         "paragraph", "heading", "list_item",
         "html_element", "html_attr", "html_image",
+        "smartart_point",
     ]
     slide_index: int
     shape_id: int
@@ -98,7 +99,7 @@ class SourceRef(BaseModel):
 # --------------------------------------------------------------------------- #
 BlockType = Literal[
     "title", "subtitle", "body", "list_item", "table_cell", "shape_text", "image",
-    "heading", "paragraph",
+    "heading", "paragraph", "smartart",
 ]
 
 
