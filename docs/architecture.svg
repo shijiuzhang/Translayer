@@ -1,123 +1,68 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="1320" viewBox="0 0 1100 1320" font-family="'DejaVu Sans','Helvetica Neue',Arial,sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="560" viewBox="0 0 1080 560" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <rect width="1080" height="560" fill="#ffffff"/>
+  <text x="540" y="46" text-anchor="middle" font-size="26" font-weight="700" fill="#1f2328">Translayer</text>
+  <text x="540" y="74" text-anchor="middle" font-size="15" fill="#57606a">Any format in, any language out — layout and in-image text intact.</text>
+
+  <!-- input -->
+  <rect x="40" y="120" rx="10" width="150" height="64" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="115" y="150" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2328">input.pptx</text>
+  <text x="115" y="170" text-anchor="middle" font-size="12" fill="#57606a">docx · html · md …</text>
+
+  <!-- pipeline boxes -->
+  <g>
+    <rect x="230" y="112" rx="10" width="150" height="80" fill="#ddf4ff" stroke="#0969da"/>
+    <text x="305" y="146" text-anchor="middle" font-size="16" font-weight="700" fill="#0969da">Parse</text>
+    <text x="305" y="168" text-anchor="middle" font-size="11" fill="#57606a">format plugin</text>
+
+    <rect x="420" y="112" rx="10" width="150" height="80" fill="#ddf4ff" stroke="#0969da"/>
+    <text x="495" y="146" text-anchor="middle" font-size="16" font-weight="700" fill="#0969da">Enrich</text>
+    <text x="495" y="168" text-anchor="middle" font-size="11" fill="#57606a">roles · OCR · terms</text>
+
+    <rect x="610" y="112" rx="10" width="150" height="80" fill="#ddf4ff" stroke="#0969da"/>
+    <text x="685" y="146" text-anchor="middle" font-size="16" font-weight="700" fill="#0969da">Localize</text>
+    <text x="685" y="168" text-anchor="middle" font-size="11" fill="#57606a">engines · images</text>
+
+    <rect x="800" y="112" rx="10" width="150" height="80" fill="#ddf4ff" stroke="#0969da"/>
+    <text x="875" y="146" text-anchor="middle" font-size="16" font-weight="700" fill="#0969da">Render</text>
+    <text x="875" y="168" text-anchor="middle" font-size="11" fill="#57606a">format plugin</text>
+  </g>
+
+  <!-- output -->
+  <rect x="990" y="120" rx="10" width="70" height="64" fill="#dafbe1" stroke="#1a7f37"/>
+  <text x="1025" y="158" text-anchor="middle" font-size="13" font-weight="600" fill="#1a7f37">out</text>
+
+  <!-- arrows -->
+  <g stroke="#57606a" stroke-width="2" fill="none" marker-end="url(#arrow)">
+    <line x1="190" y1="152" x2="226" y2="152"/>
+    <line x1="380" y1="152" x2="416" y2="152"/>
+    <line x1="570" y1="152" x2="606" y2="152"/>
+    <line x1="760" y1="152" x2="796" y2="152"/>
+    <line x1="950" y1="152" x2="986" y2="152"/>
+  </g>
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#0f172a"/>
-      <stop offset="1" stop-color="#1e293b"/>
-    </linearGradient>
-    <linearGradient id="irGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1d4ed8"/>
-      <stop offset="1" stop-color="#0ea5e9"/>
-    </linearGradient>
-    <linearGradient id="stageGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#334155"/>
-      <stop offset="1" stop-color="#475569"/>
-    </linearGradient>
-    <linearGradient id="imgGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#b45309"/>
-      <stop offset="1" stop-color="#f59e0b"/>
-    </linearGradient>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
-      <path d="M1,1 L11,6 L1,11 L4,6 Z" fill="#38bdf8"/>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#57606a"/>
     </marker>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.35"/>
-    </filter>
   </defs>
 
-  <rect width="1100" height="1320" fill="url(#bg)"/>
+  <!-- IR band -->
+  <rect x="230" y="232" rx="12" width="720" height="120" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="590" y="262" text-anchor="middle" font-size="17" font-weight="700" fill="#1f2328">DocumentIR — open intermediate representation</text>
+  <text x="590" y="290" text-anchor="middle" font-size="13" fill="#57606a">meta (langs · glossary)  ·  resources (fonts · images + in-image text)</text>
+  <text x="590" y="312" text-anchor="middle" font-size="13" fill="#57606a">blocks: semantic_role · constraints · term_hits · source_ref (lossless write-back)</text>
+  <text x="590" y="336" text-anchor="middle" font-size="12" font-style="italic" fill="#1a7f37">The value is the metadata around the text, not the text itself.</text>
 
-  <!-- Title -->
-  <text x="550" y="58" text-anchor="middle" fill="#f8fafc" font-size="38" font-weight="700" letter-spacing="1">Translayer</text>
-  <text x="550" y="92" text-anchor="middle" fill="#94a3b8" font-size="18">Any format in, any language out — layout and in-image text intact.</text>
-
-  <!-- INPUT -->
-  <text x="550" y="146" text-anchor="middle" fill="#cbd5e1" font-size="15" letter-spacing="3">INPUT</text>
-  <g font-size="17" fill="#e2e8f0" text-anchor="middle">
-    <g filter="url(#shadow)">
-      <rect x="300" y="160" width="90" height="44" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
-      <rect x="402" y="160" width="90" height="44" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
-      <rect x="504" y="160" width="90" height="44" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
-      <rect x="606" y="160" width="90" height="44" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
-      <rect x="708" y="160" width="90" height="44" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
-    </g>
-    <text x="345" y="188">.pptx</text>
-    <text x="447" y="188">.docx</text>
-    <text x="549" y="188">.xlsx</text>
-    <text x="651" y="188">html</text>
-    <text x="753" y="188">md…</text>
+  <!-- connectors from stages to IR -->
+  <g stroke="#d0d7de" stroke-width="1.5" stroke-dasharray="4 3">
+    <line x1="305" y1="192" x2="305" y2="232"/>
+    <line x1="495" y1="192" x2="495" y2="232"/>
+    <line x1="685" y1="192" x2="685" y2="232"/>
+    <line x1="875" y1="192" x2="875" y2="232"/>
   </g>
 
-  <!-- arrow to parse -->
-  <line x1="550" y1="210" x2="550" y2="250" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow)"/>
-  <text x="566" y="238" fill="#7dd3fc" font-size="15" font-style="italic">Parse · format plugin</text>
-
-  <!-- IR CARD -->
-  <g filter="url(#shadow)">
-    <rect x="190" y="262" width="720" height="244" rx="20" fill="url(#irGrad)"/>
-  </g>
-  <text x="550" y="300" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="700">Document IR</text>
-  <text x="550" y="324" text-anchor="middle" fill="#dbeafe" font-size="15">format-neutral semantic representation</text>
-  <line x1="230" y1="340" x2="870" y2="340" stroke="#bfdbfe" stroke-width="1" opacity="0.5"/>
-  <g fill="#eff6ff" font-size="16">
-    <text x="232" y="372"><tspan fill="#bfdbfe" font-weight="700">meta</tspan>      source / target languages · doc type · glossary</text>
-    <text x="232" y="404"><tspan fill="#bfdbfe" font-weight="700">resources</tspan>  fonts · images <tspan fill="#fde68a" font-weight="700">(and the text inside them)</tspan></text>
-    <text x="232" y="436"><tspan fill="#bfdbfe" font-weight="700">blocks[]</tspan>   text · semantic role · translatable? · layout</text>
-    <text x="328" y="464" fill="#dbeafe">constraints (max length / shrinkable) · term hits</text>
-    <text x="328" y="490" fill="#dbeafe">source ref (exact write-back coordinates)</text>
-  </g>
-
-  <!-- ENRICH -->
-  <line x1="550" y1="512" x2="550" y2="556" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow)"/>
-  <g filter="url(#shadow)">
-    <rect x="250" y="566" width="600" height="92" rx="16" fill="url(#stageGrad)" stroke="#64748b" stroke-width="1.5"/>
-  </g>
-  <text x="276" y="600" fill="#f8fafc" font-size="22" font-weight="700">Enrich</text>
-  <text x="276" y="628" fill="#cbd5e1" font-size="15.5">layout &amp; role tagging · image-text detection</text>
-  <text x="276" y="648" fill="#cbd5e1" font-size="15.5">terminology / translation-memory matching</text>
-
-  <!-- LOCALIZE -->
-  <line x1="550" y1="664" x2="550" y2="708" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow)"/>
-  <g filter="url(#shadow)">
-    <rect x="250" y="718" width="600" height="116" rx="16" fill="url(#stageGrad)" stroke="#64748b" stroke-width="1.5"/>
-  </g>
-  <text x="276" y="752" fill="#f8fafc" font-size="22" font-weight="700">Localize</text>
-  <text x="276" y="780" fill="#cbd5e1" font-size="15.5">multi-engine routing · context + term + length constraints</text>
-  <text x="276" y="802" fill="#cbd5e1" font-size="15.5">image re-render · VLM quality loop</text>
-  <!-- image-text highlight badge -->
-  <g filter="url(#shadow)">
-    <rect x="600" y="812" width="232" height="34" rx="17" fill="url(#imgGrad)"/>
-  </g>
-  <text x="716" y="834" text-anchor="middle" fill="#1f2937" font-size="14.5" font-weight="700">in-image text translated</text>
-
-  <!-- RENDER -->
-  <line x1="550" y1="840" x2="550" y2="884" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow)"/>
-  <g filter="url(#shadow)">
-    <rect x="250" y="894" width="600" height="92" rx="16" fill="url(#stageGrad)" stroke="#64748b" stroke-width="1.5"/>
-  </g>
-  <text x="276" y="928" fill="#f8fafc" font-size="22" font-weight="700">Render</text>
-  <text x="276" y="956" fill="#cbd5e1" font-size="15.5">precise lossless write-back · image replacement</text>
-  <text x="276" y="976" fill="#cbd5e1" font-size="15.5">→ format plugin</text>
-
-  <!-- arrow to output -->
-  <line x1="550" y1="992" x2="550" y2="1032" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrow)"/>
-
-  <!-- OUTPUT -->
-  <g filter="url(#shadow)">
-    <rect x="360" y="1042" width="380" height="58" rx="16" fill="#065f46" stroke="#10b981" stroke-width="2"/>
-  </g>
-  <text x="550" y="1078" text-anchor="middle" fill="#d1fae5" font-size="19" font-weight="700">Output · any format, fully localized</text>
-
-  <!-- Pluggable side note -->
-  <g>
-    <rect x="60" y="566" width="14" height="420" rx="7" fill="#0ea5e9" opacity="0.25"/>
-    <text x="100" y="760" fill="#7dd3fc" font-size="16" font-weight="700" transform="rotate(-90 100 760)" text-anchor="middle">EVERYTHING PLUGGABLE</text>
-  </g>
-
-  <!-- Bottom principle bar -->
-  <g filter="url(#shadow)">
-    <rect x="150" y="1140" width="800" height="120" rx="16" fill="#111827" stroke="#334155" stroke-width="1.5"/>
-  </g>
-  <text x="550" y="1176" text-anchor="middle" fill="#f1f5f9" font-size="17" font-weight="700">Formats · Engines · Standards are all adapters</text>
-  <text x="550" y="1206" text-anchor="middle" fill="#94a3b8" font-size="15">A better model is a tailwind, not a threat. A new format is just one more parser.</text>
-  <text x="550" y="1236" text-anchor="middle" fill="#7dd3fc" font-size="15">Interoperable with XLIFF · TMX · TBX — modern internal IR for rich formats, images &amp; LLMs</text>
+  <!-- in-image highlight -->
+  <rect x="230" y="400" rx="10" width="720" height="110" fill="#fff8c5" stroke="#d4a72c"/>
+  <text x="590" y="430" text-anchor="middle" font-size="15" font-weight="700" fill="#7d4e00">In-image text pipeline (the differentiator)</text>
+  <text x="590" y="456" text-anchor="middle" font-size="13" fill="#7d4e00">OCR detect  →  erase (inpaint)  →  translate  →  re-typeset with real font  →  VLM check</text>
+  <text x="590" y="480" text-anchor="middle" font-size="12" fill="#7d4e00">Pluggable everything: parsers · renderers · translation / OCR / inpaint engines are adapters.</text>
 </svg>

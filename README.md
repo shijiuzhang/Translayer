@@ -2,13 +2,12 @@
 
 # Translayer
 
-### Any format in, any language out — layout and in-image text intact.
+**Any format in, any language out — layout and in-image text intact.**
 
-**Translate documents into any language without breaking layout — even the text inside images.**
+Translate documents into any language without breaking layout — even the text inside images.
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-early%20development-orange.svg)]()
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)]()
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+![Status](https://img.shields.io/badge/status-early%20development-orange.svg)
 
 </div>
 
@@ -16,55 +15,68 @@
 
 ## Why Translayer
 
-Translating a real-world document — a deck, a report, a brochure — is not a text problem. It's a **document-engineering problem**.
+Existing translation tools treat localization as a pure NLP problem. But the real pain is **document engineering + translation**:
 
-Today's tools fail in three predictable ways:
+- **Layout breaks.** Translated text overflows boxes; uploading a `.pptx` errors out; converting to PDF shatters the structure.
+- **In-image text is ignored.** Every mainstream tool leaves the text *inside images* untranslated.
+- **One engine for every language pair.** Quality that's great for EN→DE collapses for EN→ZH.
 
-- **Layout breaks.** Upload a `.pptx` and it errors out, or gets flattened to PDF and the structure shatters. Translated text overflows its boxes.
-- **Quality collapses across language families.** One engine for every language pair. Great English→German, poor English→Chinese.
-- **Text inside images is ignored.** Charts, diagrams, AI-generated graphics — every translator leaves the words baked into images untouched.
-
-Translayer is built to solve all three at once.
+Translayer is an **AI-native document localization middle layer**: any format is parsed into a unified intermediate representation (**DocumentIR**), enriched, localized through pluggable engines, and rendered back **losslessly** — including redrawing the text inside images with real fonts.
 
 ## What it does
 
-Translayer is an **AI-native document localization layer**: a format-neutral middle layer that parses any document into a unified semantic representation, localizes it with the right engine for each language and content type, and renders it back into the original format — losslessly.
-
-- 🖼 **Translates text inside images** — detect, translate, erase, and re-render with real fonts. The thing every other tool skips.
-- 📐 **Layout-faithful** — semantic layout modeling with length/size constraints, so titles, text boxes, and tables don't break or overflow.
-- 🧠 **AI-native pipeline** — whole-document context, per-language-pair engine routing, terminology injection, and a VLM self-check quality loop.
-- 🔌 **Pluggable everything** — formats, translation engines, and standards are all adapters. New model? New format? Drop in a plugin.
-- 🔓 **Open & self-hostable** — Apache-2.0, private-deployment friendly, auditable. Your confidential documents never have to leave your network.
+- 🖼️ **Translates text inside images** — OCR → erase → re-typeset with real fonts (the sharpest differentiator).
+- 🧩 **Lossless layout** — semantic layout modeling with constraints, not a black-box skeleton, so text boxes don't overflow.
+- 🔌 **Pluggable everything** — formats (parsers/renderers), engines (translation/OCR/inpaint) and enrichment are all adapters.
+- 🧠 **AI-native pipeline** — whole-document context, multi-engine routing, glossary injection, VLM quality loop.
+- 📐 **Open IR standard** — the DocumentIR JSON Schema is the interoperable, future-proof core.
 
 ## How it works
 
-<div align="center">
-  <img src="docs/architecture.png" alt="Translayer architecture: any format is parsed into a format-neutral Document IR, enriched, localized with multi-engine routing and in-image text translation, then rendered losslessly back to any format." width="720">
-</div>
+```
+input.pptx ──Parse──▶ DocumentIR ──Enrich──▶ ──Localize──▶ ──Render──▶ output.pptx
+              (format)              (semantics)  (engines)    (format)
+```
 
-**One principle: everything is pluggable.** Formats (Parse/Render), engines (Localize), and intelligence (Enrich) are fully decoupled — so a better model is a tailwind, not a threat, and a new format is just one more parser.
+Four pluggable stages flow around a single intermediate representation:
 
-Translayer speaks the localization industry's language too: import/export **XLIFF**, with **TMX/TBX** for translation memory and terminology — interoperable with existing tooling, while the internal IR stays modern enough for rich formats, images, and LLMs.
+1. **Parse** — format plugin extracts text, layout, and images into `DocumentIR`.
+2. **Enrich** — semantic roles, in-image OCR, glossary/TM matching, context grouping.
+3. **Localize** — multi-engine translation with context/term/length constraints + the in-image text sub-pipeline.
+4. **Render** — precise, lossless write-back via `source_ref`; localized images swapped in.
+
+![Architecture](docs/architecture.png)
 
 ## Status
 
-🚧 **Early development.** First milestone: English→Chinese PowerPoint with in-image text translation and faithful layout — the wedge no existing tool handles well.
+Early development. The MVP is a narrow slice: **English PPTX → Chinese**, with in-image text translated and layout intact.
 
-See [the roadmap](#roadmap) for what's next. Stars, ideas, and early contributors are very welcome.
+## Quickstart
+
+```bash
+uv venv --python 3.11
+uv pip install -e ".[dev]"
+
+# Translate a deck
+translayer translate input.pptx --from en --to zh -o output.pptx
+
+# Or run the review UI
+translayer serve
+```
 
 ## Roadmap
 
-- [ ] **MVP** — `.pptx`, English→Chinese, in-image text, lossless layout, side-by-side review
-- [ ] More formats — `.docx`, `.xlsx`, HTML, Markdown (via format plugins)
-- [ ] More language pairs & engine routing
-- [ ] Translation memory & glossary (XLIFF / TMX / TBX)
-- [ ] Private / self-hosted deployment
-- [ ] Collaborative review & version management
+- [x] DocumentIR + pluggable four-stage pipeline
+- [ ] PPTX parser/renderer with lossless write-back
+- [ ] In-image text pipeline (OCR → erase → real-font re-typeset)
+- [ ] Review web UI (human-in-the-loop)
+- [ ] More formats (DOCX/HTML/MD), TM/glossary, private deployment
+- [ ] XLIFF interop
 
 ## Contributing
 
-Translayer aims to become an **open standard** for document localization, and the architecture is built for contribution: adding a format or an engine should mean writing one focused plugin. Contribution guides are coming as the core stabilizes — until then, open an issue to share ideas, use cases, or the documents that break everything else.
+Adding a format or engine is a single adapter. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[Apache License 2.0](LICENSE).
+[Apache 2.0](LICENSE).
