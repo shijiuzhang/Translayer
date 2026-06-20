@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Translayer runtime
+.translayer_jobs/
+*.local.pptx
+*.local.docx
+*.local.html
+
+# Generated demo artifacts
+examples/demo_en_to_zh/sample_en.pptx
+examples/demo_en_to_zh/output_zh.pptx
+examples/demo_en_to_zh/chart.png
+
+# Env / secrets
+.env
+.env.*
+
+# OS
+.DS_Store

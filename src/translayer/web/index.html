@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Translayer — Review</title>
+<style>
+  :root { --bg:#ffffff; --card:#f6f8fa; --border:#d0d7de; --blue:#0969da; --green:#1a7f37; --text:#1f2328; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; color:var(--text); background:var(--bg); }
+  header { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:14px; }
+  header h1 { font-size:16px; margin:0; }
+  .badge { font-size:12px; color:#fff; background:var(--blue); border-radius:10px; padding:2px 10px; }
+  main { padding:20px; max-width:1000px; margin:0 auto; }
+  .uploader { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .uploader input, .uploader select { padding:6px 8px; border:1px solid var(--border); border-radius:6px; }
+  button { background:var(--blue); color:#fff; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-size:14px; }
+  button.secondary { background:#fff; color:var(--text); border:1px solid var(--border); }
+  .state { font-size:13px; color:#57606a; margin:14px 0; }
+  table { width:100%; border-collapse:collapse; margin-top:14px; }
+  th, td { text-align:left; padding:8px; border-bottom:1px solid var(--border); vertical-align:top; font-size:14px; }
+  th { color:#57606a; font-weight:600; }
+  td.src { color:#57606a; width:42%; }
+  td textarea { width:100%; border:1px solid var(--border); border-radius:6px; padding:6px; font:inherit; resize:vertical; }
+  .role { font-size:11px; color:#fff; background:var(--green); border-radius:8px; padding:1px 6px; margin-left:6px; }
+  .actions { margin-top:18px; display:flex; gap:10px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Translayer</h1>
+  <span class="badge">review</span>
+  <span style="font-size:13px;color:#57606a">Any format in, any language out — layout and in-image text intact.</span>
+</header>
+<main>
+  <div class="uploader">
+    <input type="file" id="file" accept=".pptx,.docx,.html,.htm" />
+    <label>From <select id="from"><option value="en">en</option><option value="de">de</option></select></label>
+    <label>To <select id="to"><option value="zh">zh</option><option value="de">de</option><option value="en">en</option></select></label>
+    <label>Engine <select id="engine"><option value="">default</option><option value="mock">mock</option><option value="openai">openai</option><option value="deepl">deepl</option></select></label>
+    <button id="go">Translate</button>
+  </div>
+
+  <div class="state" id="state"></div>
+
+  <div id="review" class="hidden">
+    <table>
+      <thead><tr><th>Source</th><th>Translation (editable)</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="actions">
+      <button id="render">Render &amp; Download</button>
+      <button class="secondary" id="refresh">Refresh</button>
+    </div>
+  </div>
+</main>
+
+<script>
+let jobId = null;
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+  return r.json();
+}
+
+document.getElementById('go').onclick = async () => {
+  const f = document.getElementById('file').files[0];
+  if (!f) { alert('Choose a .pptx, .docx, or .html file'); return; }
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('source_lang', document.getElementById('from').value);
+  fd.append('target_lang', document.getElementById('to').value);
+  const eng = document.getElementById('engine').value;
+  if (eng) fd.append('translation_engine', eng);
+  setState('Uploading…');
+  const job = await api('/jobs', { method:'POST', body:fd });
+  jobId = job.id;
+  poll();
+};
+
+function setState(s) { document.getElementById('state').textContent = s; }
+
+async function poll() {
+  const job = await api('/jobs/' + jobId);
+  setState('State: ' + job.state + (job.error ? ' — ' + job.error : ''));
+  if (job.state === 'review' || job.state === 'done') { loadReview(); return; }
+  if (job.state === 'error') return;
+  setTimeout(poll, 900);
+}
+
+async function loadReview() {
+  const ir = await api('/jobs/' + jobId + '/ir');
+  const rows = document.getElementById('rows');
+  rows.innerHTML = '';
+  for (const b of ir.blocks) {
+    if (b.type === 'image' || !b.source_text) continue;
+    const tr = document.createElement('tr');
+    const role = b.semantic_role ? `<span class="role">${b.semantic_role}</span>` : '';
+    tr.innerHTML = `<td class="src">${escapeHtml(b.source_text)}${role}</td>`;
+    const td = document.createElement('td');
+    const ta = document.createElement('textarea');
+    ta.value = b.target_text || '';
+    ta.rows = 2;
+    ta.onchange = () => saveBlock(b.id, ta.value);
+    td.appendChild(ta);
+    tr.appendChild(td);
+    rows.appendChild(tr);
+  }
+  document.getElementById('review').classList.remove('hidden');
+}
+
+async function saveBlock(id, text) {
+  await api(`/jobs/${jobId}/blocks/${id}`, {
+    method:'PATCH',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ target_text: text }),
+  });
+}
+
+document.getElementById('render').onclick = async () => {
+  setState('Rendering…');
+  await api('/jobs/' + jobId + '/render', { method:'POST' });
+  window.location = '/jobs/' + jobId + '/download';
+  setState('Done. Download started.');
+};
+document.getElementById('refresh').onclick = loadReview;
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+</script>
+</body>
+</html>
