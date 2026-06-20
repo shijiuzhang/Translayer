@@ -203,7 +203,7 @@ class PptxRenderer:
 
     @staticmethod
     def _set_point_text(pt, text: str) -> None:
-        """Replace all text inside a diagram point with a single paragraph."""
+        """Replace all text inside a diagram point, preserving line breaks as paragraphs."""
         t_elem = pt.find(_qtag(_NS_DGM, "t"))
         if t_elem is None:
             return
@@ -217,18 +217,34 @@ class PptxRenderer:
         if lst_style is not None:
             t_elem.append(lst_style)
 
-        para = ET.SubElement(t_elem, _qtag(_NS_A, "p"))
-        run = ET.SubElement(para, _qtag(_NS_A, "r"))
-        rPr = ET.SubElement(run, _qtag(_NS_A, "rPr"))
-        rPr.set("lang", "zh-CN")
-        text_elem = ET.SubElement(run, _qtag(_NS_A, "t"))
-        text_elem.text = text
+        for line in (text or "").split("\n"):
+            para = ET.SubElement(t_elem, _qtag(_NS_A, "p"))
+            run = ET.SubElement(para, _qtag(_NS_A, "r"))
+            rPr = ET.SubElement(run, _qtag(_NS_A, "rPr"))
+            rPr.set("lang", "zh-CN")
+            text_elem = ET.SubElement(run, _qtag(_NS_A, "t"))
+            text_elem.text = line
 
     @staticmethod
     def _persist_smartart(smartart_cache: dict[object, ET.Element]) -> None:
-        """Write modified SmartArt XML back to their package parts."""
+        """Write modified SmartArt XML back to their package parts.
+
+        Register stable prefixes so PowerPoint recognizes the namespaces and
+        the diagram renders correctly.
+        """
+        ET.register_namespace("dgm", _NS_DGM)
+        ET.register_namespace("a", _NS_A)
+        ET.register_namespace("r", _NS_R)
+        ET.register_namespace("dsp", "http://schemas.microsoft.com/office/drawing/2008/diagram")
+
         for data_part, root in smartart_cache.items():
-            xml_bytes = ET.tostring(root, encoding="utf-8", xml_declaration=True)
+            xml_bytes = ET.tostring(root, encoding="UTF-8", xml_declaration=True)
+            # ET.tostring does not emit standalone="yes"; PowerPoint expects it
+            # on diagram data parts, so patch it in.
+            xml_bytes = xml_bytes.replace(
+                b'<?xml version=\'1.0\' encoding=\'UTF-8\'?>',
+                b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+            )
             data_part._blob = xml_bytes
 
 
