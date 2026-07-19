@@ -20,6 +20,7 @@ _REGISTRY: dict[str, dict[str, Any]] = {
     "translation": {},
     "ocr": {},
     "inpaint": {},
+    "image_localization": {},
 }
 
 _VALID_KINDS = set(_REGISTRY.keys())
@@ -72,6 +73,7 @@ def discover() -> None:
     # Import built-ins so their @register decorators run.
     from translayer import parsers as _parsers  # noqa: F401
     from translayer import renderers as _renderers  # noqa: F401
+    from translayer.engines import image as _image  # noqa: F401
     from translayer.engines import inpaint as _inpaint  # noqa: F401
     from translayer.engines import ocr as _ocr  # noqa: F401
     from translayer.engines import translation as _translation  # noqa: F401

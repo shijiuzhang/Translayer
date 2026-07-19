@@ -68,3 +68,18 @@ class InpaintEngine(Protocol):
     def erase(
         self, image_path: str, regions: list[ImageTextRegion], out_path: str
     ) -> str: ...
+
+
+@runtime_checkable
+class ImageLocalizationEngine(Protocol):
+    """Translate text embedded in a raster image and preserve its visual design."""
+
+    name: str
+
+    def localize(
+        self,
+        image_path: str,
+        out_path: str,
+        src: str,
+        tgt: str,
+    ) -> str: ...

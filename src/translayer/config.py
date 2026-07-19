@@ -34,6 +34,14 @@ class Settings:
     vision_base_url: str = field(default_factory=lambda: _env("OPENAI_BASE_URL", "https://api.openai.com/v1"))
     vision_model: str = field(default_factory=lambda: _env("TRANSLAYER_VISION_MODEL", "gpt-4o"))
 
+    # Gemini native image editing (Nano Banana)
+    gemini_api_key: str = field(
+        default_factory=lambda: _env("GEMINI_API_KEY", _env("GOOGLE_API_KEY"))
+    )
+    gemini_image_model: str = field(
+        default_factory=lambda: _env("TRANSLAYER_GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
+    )
+
     # Storage
     jobs_dir: str = field(default_factory=lambda: _env("TRANSLAYER_JOBS_DIR", ".translayer_jobs"))
 

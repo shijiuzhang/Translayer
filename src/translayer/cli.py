@@ -52,8 +52,29 @@ def plugins():
     from translayer.plugins import registry
 
     registry.discover()
-    for kind in ["parser", "renderer", "translation", "ocr", "inpaint"]:
+    for kind in [
+        "parser", "renderer", "translation", "ocr", "inpaint", "image_localization"
+    ]:
         typer.echo(f"{kind:12} {registry.available(kind)}")
+
+
+@app.command("translate-image")
+def translate_image(
+    input_path: str = typer.Argument(..., help="Input raster image"),
+    output: str = typer.Option(..., "--output", "-o", help="Output image path"),
+    from_lang: str = typer.Option("en", "--from", help="Source language"),
+    to_lang: str = typer.Option(..., "--to", help="Target language (for example zh or de)"),
+    engine: str = typer.Option(
+        "gemini", "--engine", help="Whole-image localization engine key"
+    ),
+):
+    """Translate text embedded in one image while preserving its visual design."""
+    from translayer.plugins import registry
+
+    registry.discover()
+    localizer = registry.get("image_localization", engine)
+    localizer.localize(input_path, output, src=from_lang, tgt=to_lang)
+    typer.echo(f"Wrote {output}")
 
 
 @app.command()
