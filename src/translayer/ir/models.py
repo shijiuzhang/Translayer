@@ -132,6 +132,41 @@ class ImageTextRegion(BaseModel):
     translatable: bool = True
 
 
+ImageLocalizationRoute = Literal["whole_image", "region", "skip", "reuse", "review"]
+
+
+class ImageSelectionAnalysis(BaseModel):
+    """Local, zero-provider-cost decision about how an image should be handled."""
+
+    route: ImageLocalizationRoute
+    reason: str
+    content_hash: str
+    visual_hash: str
+    duplicate_of: str | None = None
+    display_area_ratio: float | None = None
+    detected_text: str = ""
+    text_chars: int = 0
+    alpha_chars: int = 0
+    word_count: int = 0
+    meaningful_word_count: int = 0
+    lexical_word_ratio: float = 0.0
+    line_count: int = 0
+    mean_confidence: float = 0.0
+    text_area_ratio: float = 0.0
+
+
+class ImageLocalizationValidation(BaseModel):
+    """Quality gate for a paid whole-image localization result."""
+
+    status: Literal["not_run", "passed", "failed"] = "not_run"
+    expected_texts: list[str] = Field(default_factory=list)
+    expected_translations: list[str] = Field(default_factory=list)
+    output_texts: list[str] = Field(default_factory=list)
+    residual_source_texts: list[str] = Field(default_factory=list)
+    missing_target_texts: list[str] = Field(default_factory=list)
+    reason: str | None = None
+
+
 class ImageResource(BaseModel):
     id: str
     media_type: str  # image/png ...
@@ -139,7 +174,12 @@ class ImageResource(BaseModel):
     width: int
     height: int
     text_regions: list[ImageTextRegion] = Field(default_factory=list)
+    selection: ImageSelectionAnalysis | None = None
     localized_data_ref: str | None = None  # path to re-drawn localized image
+    rejected_data_ref: str | None = None  # generated image rejected by the quality gate
+    localization_validation: ImageLocalizationValidation = Field(
+        default_factory=ImageLocalizationValidation
+    )
 
 
 class FontRef(BaseModel):

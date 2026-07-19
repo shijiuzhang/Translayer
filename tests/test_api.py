@@ -12,20 +12,25 @@ from translayer.api.app import app
 client = TestClient(app)
 
 
-def _wait_review(job_id: str, timeout: float = 10.0) -> dict:
+def _wait_state(job_id: str, states: tuple[str, ...], timeout: float = 10.0) -> dict:
     deadline = time.time() + timeout
     while time.time() < deadline:
         job = client.get(f"/jobs/{job_id}").json()
-        if job["state"] in ("review", "done", "error"):
+        if job["state"] in states or job["state"] == "error":
             return job
         time.sleep(0.1)
-    raise AssertionError("job did not reach review")
+    raise AssertionError(f"job did not reach one of {states}")
 
 
 def test_index_served():
     r = client.get("/")
     assert r.status_code == 200
     assert "Translayer" in r.text
+    assert '<html lang="en">' in r.text
+    assert 'data-locale="en"' in r.text
+    assert 'data-locale="de"' in r.text
+    assert 'data-locale="zh"' in r.text
+    assert "localStorage.getItem('translayer.locale')" in r.text
 
 
 def test_full_job_flow(sample_pptx):
@@ -41,7 +46,44 @@ def test_full_job_flow(sample_pptx):
     assert r.status_code == 201
     job_id = r.json()["id"]
 
-    job = _wait_review(job_id)
+    job = _wait_state(job_id, ("image_review",))
+    assert job["state"] == "image_review", job
+
+    plan = client.get(f"/jobs/{job_id}/image-plan")
+    assert plan.status_code == 200
+    plan_data = plan.json()
+    assert plan_data["summary"]["total_images"] == 1
+    assert plan_data["summary"]["unresolved"] == 1
+    assert plan_data["images"][0]["localization_validation"]["status"] == "not_run"
+
+    image_id = plan_data["images"][0]["image_id"]
+    preview = client.get(f"/jobs/{job_id}/images/{image_id}/preview")
+    assert preview.status_code == 200
+    assert client.post(f"/jobs/{job_id}/render").status_code == 409
+    invalid_reuse = client.patch(
+        f"/jobs/{job_id}/images/{image_id}/decision",
+        json={"action": "reuse"},
+    )
+    assert invalid_reuse.status_code == 422
+
+    decision = client.patch(
+        f"/jobs/{job_id}/images/{image_id}/decision",
+        json={"action": "preserve"},
+    )
+    assert decision.status_code == 200
+    assert decision.json()["summary"]["unresolved"] == 0
+
+    approval = client.post(
+        f"/jobs/{job_id}/image-plan/approve",
+        json={"allow_paid_api": False, "max_budget_usd": 0},
+    )
+    assert approval.status_code == 200
+    assert client.post(
+        f"/jobs/{job_id}/image-plan/approve",
+        json={"allow_paid_api": False, "max_budget_usd": 0},
+    ).status_code == 409
+
+    job = _wait_state(job_id, ("review",))
     assert job["state"] == "review", job
     assert job["blocks"] > 0
 
@@ -63,3 +105,23 @@ def test_full_job_flow(sample_pptx):
 
 def test_missing_job_404():
     assert client.get("/jobs/doesnotexist").status_code == 404
+
+
+def test_rejects_same_or_unsupported_language(sample_pptx):
+    with open(sample_pptx, "rb") as fh:
+        same = client.post(
+            "/jobs",
+            files={"file": ("sample.pptx", fh)},
+            data={"source_lang": "de", "target_lang": "de", "images": "false"},
+        )
+    assert same.status_code == 422
+    assert "must be different" in same.json()["detail"]
+
+    with open(sample_pptx, "rb") as fh:
+        unsupported = client.post(
+            "/jobs",
+            files={"file": ("sample.pptx", fh)},
+            data={"source_lang": "fr", "target_lang": "de", "images": "false"},
+        )
+    assert unsupported.status_code == 422
+    assert "supported languages" in unsupported.json()["detail"]

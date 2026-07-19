@@ -15,6 +15,7 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.enum.text import MSO_AUTO_SIZE
 
 from translayer.ir.models import Block, DocumentIR
+from translayer.languages import pptx_language_tag
 from translayer.plugins import registry
 
 # --------------------------------------------------------------------------- #
@@ -55,11 +56,20 @@ class PptxRenderer:
                 self._render_image(block, shape_index, images)
                 continue
             if block.type == "smartart":
-                self._render_smartart(block, shape_index, smartart_cache)
+                self._render_smartart(
+                    block,
+                    shape_index,
+                    smartart_cache,
+                    target_lang=ir.meta.target_lang,
+                )
                 continue
             if block.target_text is None:
                 continue
-            self._render_text_block(block, shape_index)
+            self._render_text_block(
+                block,
+                shape_index,
+                target_lang=ir.meta.target_lang,
+            )
 
         # Persist any modified SmartArt data parts.
         self._persist_smartart(smartart_cache)
@@ -74,7 +84,7 @@ class PptxRenderer:
             return
         index[(slide_index, int(shape.shape_id))] = shape
 
-    def _render_text_block(self, block: Block, index) -> None:
+    def _render_text_block(self, block: Block, index, target_lang: str) -> None:
         ref = block.source_ref
         shape = index.get((ref.slide_index, ref.shape_id))
         if shape is None:
@@ -98,20 +108,45 @@ class PptxRenderer:
         except (IndexError, TypeError):
             return
 
-        self._set_paragraph_text(para, block.target_text or "")
+        self._set_paragraph_text(
+            para,
+            block.target_text or "",
+            language_tag=pptx_language_tag(target_lang),
+            target_lang=target_lang,
+        )
         self._apply_overflow(shape, block)
 
     @staticmethod
-    def _set_paragraph_text(para, text: str) -> None:
+    def _set_paragraph_text(
+        para,
+        text: str,
+        language_tag: str | None = None,
+        target_lang: str | None = None,
+    ) -> None:
         """Replace paragraph text, preserving the first run's formatting."""
         runs = para.runs
         if not runs:
             run = para.add_run()
             run.text = text
+            PptxRenderer._apply_run_language(run, language_tag, target_lang)
             return
         runs[0].text = text
+        PptxRenderer._apply_run_language(runs[0], language_tag, target_lang)
         for extra in runs[1:]:
             extra.text = ""
+
+    @staticmethod
+    def _apply_run_language(run, language_tag: str | None, target_lang: str | None) -> None:
+        if not language_tag:
+            return
+        properties = run._r.get_or_add_rPr()
+        properties.set("lang", language_tag)
+        if target_lang != "zh" or properties.find(_qtag(_NS_A, "ea")) is not None:
+            return
+        east_asian = properties.makeelement(
+            _qtag(_NS_A, "ea"), {"typeface": "Microsoft YaHei"}
+        )
+        properties.append(east_asian)
 
     @staticmethod
     def _apply_overflow(shape, block: Block) -> None:
@@ -162,6 +197,7 @@ class PptxRenderer:
         block: Block,
         index,
         smartart_cache: dict[object, ET.Element],
+        target_lang: str,
     ) -> None:
         if block.target_text is None:
             return
@@ -188,7 +224,12 @@ class PptxRenderer:
         model_id = ref.region_id
         for pt in root.findall(f".//{_qtag(_NS_DGM, 'pt')}"):
             if pt.get("modelId") == model_id:
-                self._set_point_text(pt, block.target_text or "")
+                self._set_point_text(
+                    pt,
+                    block.target_text or "",
+                    language_tag=pptx_language_tag(target_lang),
+                    target_lang=target_lang,
+                )
                 break
 
     @staticmethod
@@ -202,7 +243,12 @@ class PptxRenderer:
         return shape.part.related_part(dm_rId)
 
     @staticmethod
-    def _set_point_text(pt, text: str) -> None:
+    def _set_point_text(
+        pt,
+        text: str,
+        language_tag: str = "zh-CN",
+        target_lang: str = "zh",
+    ) -> None:
         """Replace all text inside a diagram point, preserving line breaks as paragraphs."""
         t_elem = pt.find(_qtag(_NS_DGM, "t"))
         if t_elem is None:
@@ -221,7 +267,10 @@ class PptxRenderer:
             para = ET.SubElement(t_elem, _qtag(_NS_A, "p"))
             run = ET.SubElement(para, _qtag(_NS_A, "r"))
             rPr = ET.SubElement(run, _qtag(_NS_A, "rPr"))
-            rPr.set("lang", "zh-CN")
+            rPr.set("lang", language_tag)
+            if target_lang == "zh":
+                east_asian = ET.SubElement(rPr, _qtag(_NS_A, "ea"))
+                east_asian.set("typeface", "Microsoft YaHei")
             text_elem = ET.SubElement(run, _qtag(_NS_A, "t"))
             text_elem.text = line
 

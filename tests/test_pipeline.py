@@ -22,6 +22,7 @@ def test_full_pipeline_offline(sample_pptx, tmp_path):
         ocr_engine="mock",
         inpaint_engine="pillow",
         images=True,
+        screen_images=False,
     )
     # Every translatable block got a translation.
     assert all(b.target_text is not None for b in ir.translatable_blocks())
@@ -37,7 +38,7 @@ def test_full_pipeline_offline(sample_pptx, tmp_path):
 
 def test_pipeline_stages_separately(sample_pptx):
     ir = parse_document(sample_pptx, "en", "zh")
-    enrich_document(ir, images=True, ocr_engine="mock")
+    enrich_document(ir, images=True, ocr_engine="mock", screen_images=False)
     # OCR ran on the image.
     assert ir.resources.images[0].text_regions
     localize(ir, translation_engine="mock", inpaint_engine="pillow", images=True)

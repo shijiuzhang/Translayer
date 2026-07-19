@@ -11,12 +11,37 @@ import os
 import tempfile
 import threading
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from translayer.config import settings
 from translayer.ir.models import DocumentIR
 
-STATES = ["queued", "parsing", "enriching", "localizing", "review", "rendering", "done", "error"]
+STATES = [
+    "queued",
+    "parsing",
+    "screening",
+    "localizing_text",
+    "image_review",
+    "localizing_images",
+    "review",
+    "rendering",
+    "done",
+    "error",
+]
+
+
+@dataclass
+class ImageDecision:
+    suggested_action: str
+    action: str | None
+    source: str = "suggested"
+
+    def public(self) -> dict:
+        return {
+            "suggested_action": self.suggested_action,
+            "action": self.action,
+            "source": self.source,
+        }
 
 
 @dataclass
@@ -34,6 +59,49 @@ class Job:
     ir: DocumentIR | None = None
     output_path: str | None = None
     work_dir: str = ""
+    image_decisions: dict[str, ImageDecision] = field(default_factory=dict)
+    image_plan_locked: bool = False
+    image_budget_usd: float = 0.0
+    estimated_image_cost_usd: float = 0.077
+    paid_image_calls: int = 0
+    slide_preview_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def initialize_image_decisions(self) -> None:
+        if self.ir is None:
+            return
+        route_actions = {
+            "whole_image": "whole_image",
+            "region": "region",
+            "skip": "preserve",
+            "reuse": "reuse",
+            "review": None,
+        }
+        self.image_decisions = {}
+        for image in self.ir.resources.images:
+            route = image.selection.route if image.selection else "review"
+            action = route_actions[route]
+            self.image_decisions[image.id] = ImageDecision(
+                suggested_action=action or "preserve",
+                action=action,
+            )
+
+    def unresolved_images(self) -> int:
+        return sum(decision.action is None for decision in self.image_decisions.values())
+
+    def planned_paid_calls(self) -> int:
+        if self.ir is None:
+            return 0
+        return sum(
+            decision.action == "whole_image"
+            and (
+                (image := self.ir.image_by_id(image_id)) is None
+                or image.localization_validation.status != "passed"
+            )
+            for image_id, decision in self.image_decisions.items()
+        )
+
+    def estimated_image_spend(self) -> float:
+        return round(self.planned_paid_calls() * self.estimated_image_cost_usd, 4)
 
     def public(self) -> dict:
         return {
@@ -45,6 +113,10 @@ class Job:
             "blocks": len(self.ir.blocks) if self.ir else 0,
             "images": len(self.ir.resources.images) if self.ir else 0,
             "has_output": bool(self.output_path and os.path.exists(self.output_path)),
+            "image_unresolved": self.unresolved_images(),
+            "image_plan_locked": self.image_plan_locked,
+            "planned_paid_calls": self.planned_paid_calls(),
+            "estimated_image_spend_usd": self.estimated_image_spend(),
         }
 
 

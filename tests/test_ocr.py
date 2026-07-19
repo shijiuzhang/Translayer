@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from PIL import Image, ImageDraw
 
-from translayer.ir.models import ImageTextRegion
+from translayer.engines.ocr.tesseract_engine import TesseractOCREngine
+from translayer.enrich.image_text import ImageTextEnricher
+from translayer.ir.models import DocMeta, DocumentIR, ImageResource, ImageTextRegion, Resources
 from translayer.plugins import registry
 
 
@@ -44,3 +47,62 @@ def test_ocr_registry_discovery() -> None:
     available = set(registry.available("ocr"))
 
     assert {"mock", "cloud_vision", "paddle"}.issubset(available)
+
+
+@pytest.mark.parametrize(
+    ("engine_name", "source", "expected"),
+    [
+        ("tesseract", "en", "eng"),
+        ("tesseract", "de", "deu+eng"),
+        ("tesseract", "zh", "chi_sim+eng"),
+        ("paddle", "en", "en"),
+        ("paddle", "de", "german"),
+        ("paddle", "zh", "ch"),
+    ],
+)
+def test_image_enricher_selects_source_language(
+    engine_name: str, source: str, expected: str, monkeypatch
+) -> None:
+    captured = {}
+
+    class _Engine:
+        def detect(self, _path):
+            return []
+
+    def fake_get(kind, key, **kwargs):
+        captured.update(kind=kind, key=key, kwargs=kwargs)
+        return _Engine()
+
+    monkeypatch.setattr("translayer.enrich.image_text.registry.get", fake_get)
+    ir = DocumentIR(
+        meta=DocMeta(source_lang=source, target_lang="en" if source != "en" else "de"),
+        resources=Resources(
+            images=[
+                ImageResource(
+                    id="image",
+                    media_type="image/png",
+                    data_ref="unused.png",
+                    width=100,
+                    height=100,
+                )
+            ]
+        ),
+    )
+
+    ImageTextEnricher(engine_name, source_lang=source).enrich(ir)
+
+    assert captured == {"kind": "ocr", "key": engine_name, "kwargs": {"lang": expected}}
+
+
+def test_tesseract_accepts_decimal_confidence_values() -> None:
+    data = {
+        "text": ["Umsatz"],
+        "conf": ["96.531"],
+        "block_num": [1],
+        "par_num": [1],
+        "line_num": [1],
+        "left": [10],
+        "height": [20],
+    }
+
+    assert TesseractOCREngine(lang="deu+eng")._group_words_by_line(data) == [[0]]

@@ -29,7 +29,13 @@ def localize_images(
     translation_engine: str = "openai",
     inpaint_engine: str = "pillow",
 ) -> DocumentIR:
-    images = [im for im in ir.resources.images if im.text_regions]
+    images = [
+        image
+        for image in ir.resources.images
+        if image.text_regions
+        and not image.localized_data_ref
+        and (image.selection is None or image.selection.route == "region")
+    ]
     if not images:
         return ir
 

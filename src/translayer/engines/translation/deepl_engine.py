@@ -6,6 +6,7 @@ import httpx
 
 from translayer.config import settings
 from translayer.engines.translation.base import BaseTranslationEngine
+from translayer.languages import normalize_language
 from translayer.plugins import registry
 
 _LANG_MAP = {
@@ -62,4 +63,4 @@ class DeepLEngine(BaseTranslationEngine):
 
     @staticmethod
     def _lang(code: str) -> str:
-        return _LANG_MAP.get(code.lower(), code.upper())
+        return _LANG_MAP[normalize_language(code)]

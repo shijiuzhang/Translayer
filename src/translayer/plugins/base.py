@@ -82,4 +82,13 @@ class ImageLocalizationEngine(Protocol):
         out_path: str,
         src: str,
         tgt: str,
+        text_mappings: list[tuple[str, str]] | None = None,
     ) -> str: ...
+
+    def invalidate_cache(
+        self,
+        image_path: str,
+        src: str,
+        tgt: str,
+        text_mappings: list[tuple[str, str]] | None = None,
+    ) -> None: ...

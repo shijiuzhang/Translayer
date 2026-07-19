@@ -120,6 +120,10 @@ class PptxParser:
                 doc_type="pptx",
                 title=meta.get("title"),
                 glossary_ref=meta.get("glossary_ref"),
+                engine_hints={
+                    "slide_width": int(prs.slide_width),
+                    "slide_height": int(prs.slide_height),
+                },
             )
         )
 

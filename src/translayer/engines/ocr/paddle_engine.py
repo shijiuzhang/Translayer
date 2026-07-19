@@ -12,6 +12,9 @@ from translayer.plugins import registry
 class PaddleOCREngine(BaseOCREngine):
     name = "paddle"
 
+    def __init__(self, lang: str = "en") -> None:
+        self.lang = lang
+
     def detect(self, image_path: str) -> list[ImageTextRegion]:
         try:
             from paddleocr import PaddleOCR
@@ -20,7 +23,7 @@ class PaddleOCREngine(BaseOCREngine):
                 "Paddle OCR support is optional. Install it with `pip install 'translayer[ocr-local]'`."
             ) from exc
 
-        ocr = PaddleOCR(use_angle_cls=True, lang="en")
+        ocr = PaddleOCR(use_angle_cls=True, lang=self.lang)
         raw = ocr.ocr(image_path, cls=True)
         regions: list[ImageTextRegion] = []
         for item in _iter_paddle_lines(raw):

@@ -12,9 +12,12 @@ venv/
 .ruff_cache/
 .pytest_cache/
 .mypy_cache/
+uv.lock
 
 # Translayer runtime
 .translayer_jobs/
+.translayer_cache/
+artifacts/
 *.local.pptx
 *.local.docx
 *.local.html

@@ -3,133 +3,542 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Translayer — Review</title>
+<title>Translayer — Document localization workspace</title>
 <style>
-  :root { --bg:#ffffff; --card:#f6f8fa; --border:#d0d7de; --blue:#0969da; --green:#1a7f37; --text:#1f2328; }
+  :root {
+    --ink:#172033; --muted:#667085; --subtle:#98a2b3; --line:#e4e7ec;
+    --canvas:#f4f7fb; --surface:#ffffff; --navy:#142a4a; --blue:#2864dc;
+    --blue-soft:#edf4ff; --cyan:#0e9384; --cyan-soft:#eafbf6;
+    --amber:#b54708; --amber-soft:#fff4e5; --red:#b42318; --red-soft:#fff0ee;
+    --violet:#6938ef; --violet-soft:#f2efff; --shadow:0 14px 40px rgba(31,48,76,.08);
+  }
   * { box-sizing:border-box; }
-  body { font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; color:var(--text); background:var(--bg); }
-  header { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:14px; }
-  header h1 { font-size:16px; margin:0; }
-  .badge { font-size:12px; color:#fff; background:var(--blue); border-radius:10px; padding:2px 10px; }
-  main { padding:20px; max-width:1000px; margin:0 auto; }
-  .uploader { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-  .uploader input, .uploader select { padding:6px 8px; border:1px solid var(--border); border-radius:6px; }
-  button { background:var(--blue); color:#fff; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-size:14px; }
-  button.secondary { background:#fff; color:var(--text); border:1px solid var(--border); }
-  .state { font-size:13px; color:#57606a; margin:14px 0; }
-  table { width:100%; border-collapse:collapse; margin-top:14px; }
-  th, td { text-align:left; padding:8px; border-bottom:1px solid var(--border); vertical-align:top; font-size:14px; }
-  th { color:#57606a; font-weight:600; }
-  td.src { color:#57606a; width:42%; }
-  td textarea { width:100%; border:1px solid var(--border); border-radius:6px; padding:6px; font:inherit; resize:vertical; }
-  .role { font-size:11px; color:#fff; background:var(--green); border-radius:8px; padding:1px 6px; margin-left:6px; }
-  .actions { margin-top:18px; display:flex; gap:10px; }
-  .hidden { display:none; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; color:var(--ink); background:var(--canvas); font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; }
+  button,input,select,textarea { font:inherit; }
+  button { cursor:pointer; }
+  .hidden { display:none !important; }
+
+  .topbar { height:68px; background:rgba(255,255,255,.94); backdrop-filter:blur(14px); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; padding:0 28px; position:sticky; top:0; z-index:30; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .mark { width:36px; height:36px; border-radius:11px; display:grid; place-items:center; color:white; font-weight:800; letter-spacing:-1px; background:linear-gradient(145deg,var(--blue),#52a5ff); box-shadow:0 7px 16px rgba(40,100,220,.25); }
+  .brand-name { font-size:17px; font-weight:750; letter-spacing:-.2px; }
+  .brand-sub { font-size:12px; color:var(--muted); margin-top:1px; }
+  .top-status { display:flex; align-items:center; gap:9px; color:var(--muted); font-size:13px; }
+  .top-actions { display:flex; align-items:center; gap:16px; }
+  .language-switch { display:flex; padding:3px; border:1px solid var(--line); border-radius:10px; background:#f8fafc; }
+  .language-switch button { min-width:36px; border:0; border-radius:7px; padding:5px 7px; background:transparent; color:var(--muted); font-size:10px; font-weight:750; }
+  .language-switch button.active { color:#fff; background:var(--navy); }
+  .status-dot { width:8px; height:8px; border-radius:50%; background:#12b76a; box-shadow:0 0 0 4px #e8f8ef; }
+
+  .shell { max-width:1440px; margin:0 auto; padding:26px 30px 110px; }
+  .steps { display:grid; grid-template-columns:repeat(4,1fr); background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:15px 18px; box-shadow:0 3px 12px rgba(31,48,76,.035); margin-bottom:24px; }
+  .step { display:flex; align-items:center; gap:10px; position:relative; color:var(--subtle); font-size:13px; font-weight:600; }
+  .step:not(:last-child)::after { content:""; height:1px; background:var(--line); position:absolute; left:42px; right:14px; bottom:-7px; }
+  .step-num { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; background:#f2f4f7; color:var(--muted); font-size:12px; }
+  .step.active { color:var(--blue); }
+  .step.active .step-num { background:var(--blue); color:#fff; box-shadow:0 0 0 4px var(--blue-soft); }
+  .step.done { color:var(--cyan); }
+  .step.done .step-num { background:var(--cyan-soft); color:var(--cyan); }
+
+  .hero { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(340px,.75fr); min-height:560px; background:linear-gradient(135deg,#fff 30%,#edf5ff); border:1px solid var(--line); border-radius:24px; overflow:hidden; box-shadow:var(--shadow); }
+  .hero-copy { padding:64px 58px; }
+  .eyebrow { color:var(--blue); font-size:12px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; margin-bottom:18px; }
+  h1 { font-size:46px; line-height:1.13; letter-spacing:-1.7px; margin:0 0 20px; max-width:720px; }
+  .lead { color:var(--muted); font-size:17px; line-height:1.75; max-width:670px; margin:0; }
+  .feature-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:28px; }
+  .feature { background:#fff; border:1px solid #d9e5f7; color:#38506f; border-radius:999px; padding:8px 12px; font-size:12px; font-weight:650; }
+  .upload-panel { margin:28px; padding:25px; border-radius:19px; background:rgba(255,255,255,.88); border:1px solid rgba(255,255,255,.8); box-shadow:0 18px 45px rgba(38,75,125,.13); align-self:center; }
+  .panel-title { font-size:16px; font-weight:750; margin-bottom:4px; }
+  .panel-note { color:var(--muted); font-size:12px; margin-bottom:18px; }
+  .dropzone { border:1.5px dashed #9db8df; background:#f7fbff; border-radius:14px; padding:28px 16px; text-align:center; transition:.2s; position:relative; }
+  .dropzone.drag { border-color:var(--blue); background:var(--blue-soft); transform:translateY(-1px); }
+  .dropzone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; }
+  .upload-icon { width:48px; height:48px; margin:0 auto 12px; border-radius:14px; display:grid; place-items:center; background:var(--blue-soft); color:var(--blue); font-size:22px; }
+  .file-name { font-size:13px; font-weight:650; margin-bottom:4px; word-break:break-all; }
+  .drop-note { color:var(--muted); font-size:11px; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0; }
+  label.field { display:block; font-size:11px; color:var(--muted); font-weight:650; }
+  .field-label { display:block; font-size:11px; color:var(--muted); font-weight:650; }
+  .target-options { display:flex; gap:6px; margin-top:6px; }
+  .target-option { flex:1; position:relative; cursor:pointer; }
+  .target-option input { position:absolute; opacity:0; pointer-events:none; }
+  .target-option span { min-height:38px; display:grid; place-items:center; border:1px solid #d0d5dd; border-radius:10px; background:#fff; color:#475467; font-size:11px; font-weight:700; transition:.16s; }
+  .target-option input:checked + span { color:var(--blue); border-color:#84adf4; background:var(--blue-soft); box-shadow:0 0 0 2px rgba(40,100,220,.08); }
+  .target-option input:disabled + span { opacity:.35; cursor:not-allowed; text-decoration:line-through; }
+  select,input[type="number"],input[type="search"] { width:100%; margin-top:6px; border:1px solid #d0d5dd; border-radius:10px; background:#fff; color:var(--ink); padding:10px 11px; outline:none; }
+  select:focus,input:focus,textarea:focus { border-color:#84adf4; box-shadow:0 0 0 3px var(--blue-soft); }
+  .btn { border:0; border-radius:10px; min-height:40px; padding:0 15px; display:inline-flex; align-items:center; justify-content:center; gap:7px; font-weight:700; font-size:13px; transition:.16s; }
+  .btn:hover { transform:translateY(-1px); }
+  .btn:disabled { cursor:not-allowed; opacity:.45; transform:none; }
+  .btn-primary { color:#fff; background:var(--blue); box-shadow:0 6px 14px rgba(40,100,220,.2); }
+  .btn-secondary { color:#344054; background:#fff; border:1px solid #d0d5dd; }
+  .btn-soft { color:var(--blue); background:var(--blue-soft); }
+  .btn-danger-soft { color:var(--red); background:var(--red-soft); }
+  .btn-block { width:100%; }
+
+  .processing { background:#fff; border:1px solid var(--line); border-radius:22px; min-height:460px; display:grid; place-items:center; text-align:center; box-shadow:var(--shadow); }
+  .orbit { width:72px; height:72px; border-radius:50%; border:3px solid #e4edfb; border-top-color:var(--blue); animation:spin 1s linear infinite; margin:0 auto 20px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .processing h2 { margin:0 0 8px; font-size:22px; }
+  .processing p { margin:0; color:var(--muted); }
+
+  .page-head { display:flex; justify-content:space-between; align-items:flex-end; gap:22px; margin-bottom:20px; }
+  .page-head h2 { font-size:28px; margin:0 0 6px; letter-spacing:-.6px; }
+  .page-head p { margin:0; color:var(--muted); font-size:14px; }
+  .job-chip { border:1px solid var(--line); background:#fff; border-radius:999px; padding:8px 12px; font-size:12px; color:var(--muted); }
+  .metrics { display:grid; grid-template-columns:repeat(5,minmax(140px,1fr)); gap:12px; margin-bottom:18px; }
+  .metric { background:#fff; border:1px solid var(--line); border-radius:14px; padding:15px 16px; min-height:91px; }
+  .metric-label { color:var(--muted); font-size:11px; font-weight:700; }
+  .metric-value { font-size:25px; font-weight:780; margin:7px 0 1px; letter-spacing:-.5px; }
+  .metric-foot { color:var(--subtle); font-size:10px; }
+  .metric.attention { background:var(--amber-soft); border-color:#fedfbb; }
+  .metric.attention .metric-value { color:var(--amber); }
+  .metric.cost { background:var(--blue-soft); border-color:#cfe0ff; }
+  .metric.cost .metric-value { color:var(--blue); }
+
+  .toolbar { background:#fff; border:1px solid var(--line); border-radius:15px; padding:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; position:sticky; top:81px; z-index:20; box-shadow:0 7px 20px rgba(31,48,76,.055); }
+  .filters { display:flex; gap:5px; flex-wrap:wrap; }
+  .filter { border:0; background:transparent; color:var(--muted); border-radius:9px; padding:8px 10px; font-size:12px; font-weight:700; }
+  .filter.active { background:var(--navy); color:#fff; }
+  .toolbar-actions { display:flex; gap:8px; align-items:center; }
+  .search { width:210px !important; margin:0 !important; padding:8px 10px !important; font-size:12px; }
+  .bulkbar { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:var(--navy); color:#fff; border-radius:12px; margin-bottom:14px; }
+  .bulkbar span { font-size:12px; }
+  .bulk-actions { display:flex; gap:6px; }
+  .bulk-actions button { border:1px solid rgba(255,255,255,.24); background:rgba(255,255,255,.1); color:#fff; border-radius:8px; padding:7px 9px; font-size:11px; }
+
+  .cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:15px; overflow:hidden; transition:.18s; position:relative; }
+  .card:hover { transform:translateY(-2px); box-shadow:0 12px 28px rgba(31,48,76,.11); border-color:#cbd8eb; }
+  .card.selected { outline:2px solid var(--blue); outline-offset:-2px; }
+  .card.unresolved { border-color:#f0b66f; }
+  .card.quality-failed { border-color:#f04438; box-shadow:0 0 0 2px var(--red-soft); }
+  .thumb { aspect-ratio:16/9; background:#eef2f6; display:grid; place-items:center; overflow:hidden; position:relative; cursor:pointer; }
+  .thumb img { width:100%; height:100%; object-fit:contain; }
+  .preview-unavailable { padding:40px; text-align:center; color:var(--subtle); font-size:11px; }
+  .thumb::after { content:attr(data-view-label); opacity:0; position:absolute; inset:auto 10px 10px auto; padding:5px 8px; border-radius:7px; background:rgba(20,42,74,.86); color:#fff; font-size:10px; transition:.16s; }
+  .thumb:hover::after { opacity:1; }
+  .selectbox { position:absolute; z-index:2; left:10px; top:10px; width:20px; height:20px; accent-color:var(--blue); }
+  .slide-tag { position:absolute; right:9px; top:9px; background:rgba(20,42,74,.88); color:#fff; border-radius:7px; padding:5px 7px; font-size:10px; }
+  .card-body { padding:12px; }
+  .card-line { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .image-id { font-size:11px; font-weight:750; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .badge { border-radius:999px; padding:4px 7px; font-size:9px; font-weight:800; white-space:nowrap; }
+  .badge-review { color:var(--amber); background:var(--amber-soft); }
+  .badge-whole_image { color:var(--violet); background:var(--violet-soft); }
+  .badge-skip { color:#475467; background:#f2f4f7; }
+  .badge-region { color:var(--cyan); background:var(--cyan-soft); }
+  .badge-reuse { color:var(--blue); background:var(--blue-soft); }
+  .reason { min-height:32px; margin:9px 0 7px; color:var(--muted); font-size:11px; line-height:1.45; }
+  .ocr { height:34px; overflow:hidden; color:#475467; font-size:10px; line-height:1.55; background:#f8fafc; border-radius:7px; padding:4px 6px; }
+  .confidence { display:flex; align-items:center; gap:7px; margin:9px 0; color:var(--subtle); font-size:9px; }
+  .confidence-bar { height:4px; flex:1; background:#eaecf0; border-radius:3px; overflow:hidden; }
+  .confidence-fill { height:100%; background:var(--cyan); border-radius:3px; }
+  .action-select { width:100%; padding:8px 9px; border-radius:8px; border:1px solid #d0d5dd; background:#fff; color:#344054; font-size:11px; font-weight:650; }
+  .action-select.pending { border-color:#f0b66f; background:#fffaf4; color:var(--amber); }
+
+  .approval { position:fixed; z-index:25; left:50%; bottom:18px; transform:translateX(-50%); width:min(1120px,calc(100% - 34px)); display:grid; grid-template-columns:1fr auto auto auto auto; align-items:center; gap:16px; background:rgba(20,42,74,.97); color:#fff; padding:13px 16px 13px 19px; border-radius:16px; box-shadow:0 18px 50px rgba(15,30,52,.32); backdrop-filter:blur(12px); }
+  .approval-title { font-size:13px; font-weight:750; }
+  .approval-note { color:#c8d5e7; font-size:10px; margin-top:3px; }
+  .cost-readout { text-align:right; }
+  .cost-readout strong { display:block; font-size:20px; }
+  .cost-readout span { color:#c8d5e7; font-size:10px; }
+  .budget-field { width:105px; }
+  .budget-field input { margin:0; padding:8px; }
+  .paid-toggle { display:flex; gap:7px; align-items:center; font-size:10px; color:#dce5f1; max-width:155px; }
+  .paid-toggle input { accent-color:#6ea2ff; }
+
+  .drawer-backdrop { position:fixed; z-index:50; inset:0; background:rgba(18,30,50,.46); opacity:0; pointer-events:none; transition:.2s; }
+  .drawer-backdrop.open { opacity:1; pointer-events:auto; }
+  .drawer { position:fixed; z-index:51; top:0; right:0; height:100%; width:min(760px,94vw); background:#fff; box-shadow:-24px 0 60px rgba(17,30,51,.2); transform:translateX(100%); transition:.24s ease; display:flex; flex-direction:column; }
+  .drawer.open { transform:translateX(0); }
+  .drawer-head { padding:18px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+  .drawer-title { font-size:16px; font-weight:760; }
+  .icon-btn { width:34px; height:34px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--muted); }
+  .drawer-body { overflow:auto; padding:20px 22px 26px; }
+  .preview-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .preview-pane { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#f6f8fb; }
+  .preview-pane.rejected { grid-column:1 / -1; border-color:#fda29b; background:var(--red-soft); }
+  .preview-label { padding:8px 10px; border-bottom:1px solid var(--line); background:#fff; font-size:10px; color:var(--muted); font-weight:700; }
+  .preview-pane img { width:100%; aspect-ratio:16/9; object-fit:contain; display:block; }
+  .detail-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin:14px 0; }
+  .detail-stat { background:#f8fafc; border-radius:10px; padding:10px; }
+  .detail-stat span { display:block; color:var(--muted); font-size:9px; }
+  .detail-stat strong { display:block; font-size:14px; margin-top:3px; }
+  .detail-section { border-top:1px solid var(--line); padding-top:15px; margin-top:15px; }
+  .detail-section h4 { margin:0 0 8px; font-size:12px; }
+  .quality-alert { border:1px solid #fda29b; background:var(--red-soft); color:var(--red); border-radius:10px; padding:10px; font-size:11px; line-height:1.5; }
+  .ocr-full { background:#f7f9fc; border:1px solid #edf0f4; border-radius:10px; padding:11px; max-height:130px; overflow:auto; white-space:pre-wrap; color:#475467; font-size:11px; line-height:1.55; }
+  .decision-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .decision-btn { border:1px solid var(--line); background:#fff; border-radius:10px; padding:11px; text-align:left; }
+  .decision-btn strong { display:block; font-size:11px; }
+  .decision-btn span { display:block; color:var(--muted); font-size:9px; margin-top:3px; }
+  .decision-btn.active { border-color:var(--blue); background:var(--blue-soft); color:var(--blue); }
+
+  dialog { width:min(510px,calc(100% - 32px)); border:0; border-radius:18px; padding:0; box-shadow:0 30px 90px rgba(18,30,50,.3); }
+  dialog::backdrop { background:rgba(18,30,50,.5); backdrop-filter:blur(3px); }
+  .dialog-body { padding:24px; }
+  .dialog-body h3 { margin:0 0 8px; font-size:20px; }
+  .dialog-body p { color:var(--muted); font-size:12px; line-height:1.6; }
+  .confirm-summary { background:#f7f9fc; border-radius:12px; padding:13px; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0; }
+  .confirm-summary span { color:var(--muted); font-size:10px; }
+  .confirm-summary strong { display:block; margin-top:2px; }
+  .dialog-actions { display:flex; justify-content:flex-end; gap:8px; }
+
+  .text-review { background:#fff; border:1px solid var(--line); border-radius:18px; overflow:hidden; }
+  .text-review-head { padding:18px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+  .review-table { width:100%; border-collapse:collapse; }
+  .review-table th,.review-table td { text-align:left; vertical-align:top; border-bottom:1px solid var(--line); padding:12px 18px; font-size:12px; }
+  .review-table th { color:var(--muted); background:#fafbfc; font-size:10px; letter-spacing:.04em; }
+  .review-table td:first-child { width:43%; color:#475467; }
+  textarea { width:100%; min-height:58px; resize:vertical; border:1px solid #d0d5dd; border-radius:9px; padding:9px; color:var(--ink); }
+
+  .toast { position:fixed; z-index:100; top:82px; right:22px; max-width:360px; border-radius:12px; padding:12px 14px; color:#fff; background:var(--navy); box-shadow:var(--shadow); font-size:12px; transform:translateY(-12px); opacity:0; pointer-events:none; transition:.2s; }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.error { background:var(--red); }
+
+  @media (max-width:1100px) {
+    .cards { grid-template-columns:repeat(3,1fr); }
+    .metrics { grid-template-columns:repeat(3,1fr); }
+    .hero { grid-template-columns:1fr; }
+    .hero-copy { padding-bottom:24px; }
+    .upload-panel { margin-top:0; }
+  }
+  @media (max-width:760px) {
+    .topbar { padding:0 16px; } .brand-sub,.top-status { display:none; }
+    .shell { padding:16px 14px 120px; }
+    .steps { grid-template-columns:repeat(4,auto); gap:6px; padding:12px; }
+    .step span:last-child { display:none; }
+    .hero-copy { padding:40px 25px 18px; } h1 { font-size:34px; }
+    .upload-panel { margin:18px; }
+    .metrics { grid-template-columns:1fr 1fr; }
+    .cards { grid-template-columns:1fr 1fr; }
+    .toolbar { align-items:flex-start; flex-direction:column; top:76px; }
+    .toolbar-actions,.search { width:100% !important; }
+    .approval { grid-template-columns:1fr auto; }
+    .budget-field,.paid-toggle { display:none; }
+    #lockPlan { grid-column:1 / -1; width:100%; }
+    .preview-grid { grid-template-columns:1fr; }
+  }
+  @media (max-width:480px) { .cards,.metrics,.form-grid { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Translayer</h1>
-  <span class="badge">review</span>
-  <span style="font-size:13px;color:#57606a">Any format in, any language out — layout and in-image text intact.</span>
+<header class="topbar">
+  <div class="brand"><div class="mark">T</div><div><div class="brand-name">Translayer</div><div class="brand-sub" data-i18n="brand.tagline">Keep the format. Change the language.</div></div></div>
+  <div class="top-actions"><div class="top-status"><i class="status-dot"></i><span data-i18n="status.safe">Local screening enabled · Paid image API off by default</span></div><div class="language-switch" aria-label="Interface language" data-i18n-aria="language.label"><button type="button" data-locale="en">EN</button><button type="button" data-locale="de">DE</button><button type="button" data-locale="zh">中</button></div></div>
 </header>
-<main>
-  <div class="uploader">
-    <input type="file" id="file" accept=".pptx,.docx,.html,.htm" />
-    <label>From <select id="from"><option value="en">en</option><option value="de">de</option></select></label>
-    <label>To <select id="to"><option value="zh">zh</option><option value="de">de</option><option value="en">en</option></select></label>
-    <label>Engine <select id="engine"><option value="">default</option><option value="mock">mock</option><option value="openai">openai</option><option value="deepl">deepl</option></select></label>
-    <button id="go">Translate</button>
-  </div>
 
-  <div class="state" id="state"></div>
+<main class="shell">
+  <nav class="steps" id="steps">
+    <div class="step active" data-step="upload"><span class="step-num">1</span><span data-i18n="step.upload">Upload</span></div>
+    <div class="step" data-step="images"><span class="step-num">2</span><span data-i18n="step.images">Review images</span></div>
+    <div class="step" data-step="text"><span class="step-num">3</span><span data-i18n="step.text">Review translation</span></div>
+    <div class="step" data-step="export"><span class="step-num">4</span><span data-i18n="step.export">Export</span></div>
+  </nav>
 
-  <div id="review" class="hidden">
-    <table>
-      <thead><tr><th>Source</th><th>Translation (editable)</th></tr></thead>
-      <tbody id="rows"></tbody>
-    </table>
-    <div class="actions">
-      <button id="render">Render &amp; Download</button>
-      <button class="secondary" id="refresh">Refresh</button>
+  <section id="uploadView" class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow" data-i18n="hero.eyebrow">Document localization workspace</div>
+      <h1 data-i18n="hero.title">Make every presentation<br>speak another language naturally</h1>
+      <p class="lead" data-i18n="hero.lead">Identify images, logos and duplicate assets locally, then confirm the handling method and maximum budget. Translayer starts only after you lock the plan.</p>
+      <div class="feature-row"><span class="feature" data-i18n="feature.format">Preserve PPTX formatting</span><span class="feature" data-i18n="feature.images">Translate text in images</span><span class="feature" data-i18n="feature.local">Zero-cost local screening</span><span class="feature" data-i18n="feature.budget">Hard budget limit</span></div>
     </div>
-  </div>
+    <div class="upload-panel">
+      <div class="panel-title" data-i18n="upload.title">Create translation job</div><div class="panel-note" data-i18n="upload.supported">Currently supports PPTX, DOCX and HTML</div>
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="file" accept=".pptx,.docx,.html,.htm" />
+        <div class="upload-icon">↑</div><div class="file-name" id="fileName" data-i18n="upload.drop">Drop a file here or click to choose</div><div class="drop-note" data-i18n="upload.privacy">The file is used only for this translation job</div>
+      </div>
+      <div class="form-grid">
+        <label class="field"><span data-i18n="field.source">Source language</span><select id="from"><option value="en">English</option><option value="de">Deutsch</option><option value="zh">中文</option></select></label>
+        <div class="field"><span class="field-label" data-i18n="field.targets">Target languages (multiple allowed)</span><div class="target-options" id="targetOptions"><label class="target-option"><input type="checkbox" value="zh" checked><span>中文</span></label><label class="target-option"><input type="checkbox" value="de" checked><span>Deutsch</span></label><label class="target-option"><input type="checkbox" value="en"><span>English</span></label></div></div>
+        <label class="field"><span data-i18n="field.engine">Text engine</span><select id="engine"><option value="" data-i18n="engine.default">Default engine</option><option value="mock" data-i18n="engine.mock">Offline demo</option><option value="openai">OpenAI</option><option value="deepl">DeepL</option></select></label>
+        <label class="field"><span data-i18n="field.ocr">Image OCR</span><select id="ocr"><option value="tesseract" data-i18n="ocr.tesseract">Tesseract (local)</option><option value="paddle" data-i18n="ocr.paddle">PaddleOCR (local)</option><option value="mock" data-i18n="engine.mock">Offline demo</option><option value="cloud_vision">Cloud Vision</option></select></label>
+      </div>
+      <button class="btn btn-primary btn-block" id="startBtn"><span data-i18n="upload.start">Start local analysis</span> <span>→</span></button>
+    </div>
+  </section>
+
+  <section id="processingView" class="processing hidden"><div><div class="orbit"></div><h2 id="processingTitle" data-i18n="processing.title">Analyzing document</h2><p id="processingText" data-i18n="processing.note">Extracting structure, fonts and images without calling an image-generation API</p></div></section>
+
+  <section id="imageView" class="hidden">
+    <div class="page-head"><div><h2 data-i18n="images.title">Image review</h2><p data-i18n="images.lead">The system has made conservative recommendations. Resolve every pending item and confirm the budget to continue.</p></div><div class="job-chip" id="jobChip"></div></div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label" data-i18n="metric.total">Total images</div><div class="metric-value" id="mTotal">—</div><div class="metric-foot" data-i18n="metric.total.note">Bitmap assets in this document</div></div>
+      <div class="metric"><div class="metric-label" data-i18n="metric.whole">Whole-image candidates</div><div class="metric-value" id="mWhole">—</div><div class="metric-foot" data-i18n="metric.whole.note">High-confidence text-rich images</div></div>
+      <div class="metric attention"><div class="metric-label" data-i18n="metric.pending">Awaiting confirmation</div><div class="metric-value" id="mUnresolved">—</div><div class="metric-foot" data-i18n="metric.pending.note">Logos, photos, UI or low confidence</div></div>
+      <div class="metric"><div class="metric-label" data-i18n="metric.safe">Skip / reuse</div><div class="metric-value" id="mSafe">—</div><div class="metric-foot" data-i18n="metric.safe.note">No image API charges</div></div>
+      <div class="metric cost"><div class="metric-label" data-i18n="metric.cost">Estimated image cost</div><div class="metric-value" id="mCost">—</div><div class="metric-foot" id="mCalls" data-i18n="metric.cost.note">Based on the selected plan</div></div>
+    </div>
+    <div class="toolbar">
+      <div class="filters" id="filters">
+        <button class="filter active" data-filter="all" data-i18n="filter.all">All</button><button class="filter" data-filter="review" data-i18n="route.review">Pending</button><button class="filter" data-filter="whole_image" data-i18n="route.whole_image">Whole image</button><button class="filter" data-filter="skip" data-i18n="route.skip">Keep</button><button class="filter" data-filter="region" data-i18n="route.region">Local OCR</button><button class="filter" data-filter="reuse" data-i18n="route.reuse">Duplicate</button>
+      </div>
+      <div class="toolbar-actions"><input class="search" id="search" type="search" placeholder="Search page, text or image ID" data-i18n-placeholder="search.placeholder" /><button class="btn btn-soft" id="acceptSafe" data-i18n="images.accept">Apply safe recommendation to pending items</button></div>
+    </div>
+    <div id="bulkbar" class="bulkbar hidden"><span><strong id="selectedCount">0</strong> <span data-i18n="bulk.selected">images selected</span></span><div class="bulk-actions"><button data-bulk="preserve" data-i18n="action.preserve">Keep original</button><button data-bulk="whole_image" data-i18n="action.whole_image">Translate whole image</button><button data-bulk="region" data-i18n="action.region">Local OCR</button><button data-bulk="logo" data-i18n="action.logo">Mark as logo</button><button id="clearSelection" data-i18n="bulk.clear">Clear selection</button></div></div>
+    <div class="cards" id="imageCards"></div>
+  </section>
+
+  <section id="textView" class="hidden">
+    <div class="page-head"><div><h2 data-i18n="text.title">Translation review</h2><p data-i18n="text.lead">The image plan is locked. Edit any translated text before export.</p></div><div class="job-chip" id="textJobChip"></div></div>
+    <div class="text-review"><div class="text-review-head"><div><strong data-i18n="text.blocks">Text blocks</strong><div class="panel-note" style="margin:4px 0 0" data-i18n="text.autosave">Changes are saved automatically</div></div><button class="btn btn-primary" id="renderBtn" data-i18n="text.render">Generate and download PPTX</button></div><table class="review-table"><thead><tr><th data-i18n="text.source">Source</th><th data-i18n="text.target">Translation (editable)</th></tr></thead><tbody id="textRows"></tbody></table></div>
+  </section>
 </main>
 
+<div class="approval hidden" id="approvalBar">
+  <div><div class="approval-title"><span id="barUnresolved">—</span> <span data-i18n="approval.pending">items awaiting confirmation</span></div><div class="approval-note" data-i18n="approval.note">Image handling cannot be changed after the plan is locked</div></div>
+  <div class="cost-readout"><strong id="barCost">$0.00</strong><span id="barCalls">0 paid calls</span></div>
+  <label class="budget-field"><input id="budget" type="number" min="0" step="0.01" value="0" title="Maximum budget (USD)" data-i18n-title="approval.budget" /></label>
+  <label class="paid-toggle"><input id="allowPaid" type="checkbox" /> <span data-i18n="approval.allow_paid">I allow paid image API calls within this budget</span></label>
+  <button class="btn btn-primary" id="lockPlan" data-i18n="approval.lock">Lock plan and continue</button>
+</div>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="drawer"><div class="drawer-head"><div><div class="drawer-title" id="drawerTitle" data-i18n="drawer.default_title">Image details</div><div class="panel-note" id="drawerSub" style="margin:3px 0 0"></div></div><button class="icon-btn" id="closeDrawer">×</button></div><div class="drawer-body" id="drawerBody"></div></aside>
+
+<dialog id="confirmDialog"><div class="dialog-body"><h3 data-i18n="dialog.title">Confirm and lock the image plan</h3><p data-i18n="dialog.note">Only the current plan will be executed. Any additional paid call is blocked once the budget limit is reached.</p><div class="confirm-summary"><div><span data-i18n="dialog.calls">Paid image calls</span><strong id="confirmCalls">0 calls</strong></div><div><span data-i18n="dialog.cost">Estimated cost</span><strong id="confirmCost">$0.00</strong></div><div><span data-i18n="dialog.budget">Maximum budget</span><strong id="confirmBudget">$0.00</strong></div><div><span data-i18n="dialog.target">Target language</span><strong id="confirmLang">—</strong></div></div><div class="dialog-actions"><button class="btn btn-secondary" id="cancelConfirm" data-i18n="dialog.back">Back to review</button><button class="btn btn-primary" id="confirmPlan" data-i18n="dialog.confirm">Confirm and run</button></div></div></dialog>
+<div class="toast" id="toast"></div>
+
 <script>
-let jobId = null;
-
-async function api(path, opts) {
-  const r = await fetch(path, opts);
-  if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
-  return r.json();
-}
-
-document.getElementById('go').onclick = async () => {
-  const f = document.getElementById('file').files[0];
-  if (!f) { alert('Choose a .pptx, .docx, or .html file'); return; }
-  const fd = new FormData();
-  fd.append('file', f);
-  fd.append('source_lang', document.getElementById('from').value);
-  fd.append('target_lang', document.getElementById('to').value);
-  const eng = document.getElementById('engine').value;
-  if (eng) fd.append('translation_engine', eng);
-  setState('Uploading…');
-  const job = await api('/jobs', { method:'POST', body:fd });
-  jobId = job.id;
-  poll();
-};
-
-function setState(s) { document.getElementById('state').textContent = s; }
-
-async function poll() {
-  const job = await api('/jobs/' + jobId);
-  setState('State: ' + job.state + (job.error ? ' — ' + job.error : ''));
-  if (job.state === 'review' || job.state === 'done') { loadReview(); return; }
-  if (job.state === 'error') return;
-  setTimeout(poll, 900);
-}
-
-async function loadReview() {
-  const ir = await api('/jobs/' + jobId + '/ir');
-  const rows = document.getElementById('rows');
-  rows.innerHTML = '';
-  for (const b of ir.blocks) {
-    if (b.type === 'image' || !b.source_text) continue;
-    const tr = document.createElement('tr');
-    const role = b.semantic_role ? `<span class="role">${b.semantic_role}</span>` : '';
-    tr.innerHTML = `<td class="src">${escapeHtml(b.source_text)}${role}</td>`;
-    const td = document.createElement('td');
-    const ta = document.createElement('textarea');
-    ta.value = b.target_text || '';
-    ta.rows = 2;
-    ta.onchange = () => saveBlock(b.id, ta.value);
-    td.appendChild(ta);
-    tr.appendChild(td);
-    rows.appendChild(tr);
+const MESSAGES = {
+  en: {
+    'app.title':'Translayer — Document localization workspace','brand.tagline':'Preserve the format. Change the language.','status.safe':'Local review active · Paid image API off by default','language.label':'Interface language',
+    'step.upload':'Upload','step.images':'Review images','step.text':'Review translation','step.export':'Export',
+    'hero.eyebrow':'Document localization workspace','hero.title':'Make every presentation<br>speak another language naturally','hero.lead':'Identify images, logos and duplicate assets locally, then confirm the handling method and maximum budget. Translayer starts only after you lock the plan.',
+    'feature.format':'Preserve PPTX formatting','feature.images':'Translate text in images','feature.local':'Zero-cost local screening','feature.budget':'Hard budget limit',
+    'upload.title':'Create translation job','upload.supported':'Currently supports PPTX, DOCX and HTML','upload.drop':'Drop a file here or click to choose','upload.privacy':'The file is used only for this translation job','upload.start':'Start local analysis',
+    'field.source':'Source language','field.targets':'Target languages (multiple allowed)','field.engine':'Text engine','field.ocr':'Image OCR','engine.default':'Default engine','engine.mock':'Offline demo','ocr.tesseract':'Tesseract (local)','ocr.paddle':'PaddleOCR (local)',
+    'processing.title':'Analyzing document','processing.note':'Extracting structure, fonts and images without calling an image-generation API',
+    'images.title':'Image review','images.lead':'The system has made conservative recommendations. Resolve every pending item and confirm the budget to continue.','images.accept':'Apply safe recommendation to pending items',
+    'metric.total':'Total images','metric.total.note':'Bitmap assets in this document','metric.whole':'Whole-image candidates','metric.whole.note':'High-confidence text-rich images','metric.pending':'Awaiting confirmation','metric.pending.note':'Logos, photos, UI or low confidence','metric.safe':'Skip / reuse','metric.safe.note':'No image API charges','metric.cost':'Estimated image cost','metric.cost.note':'Based on the selected plan',
+    'filter.all':'All','route.review':'Pending','route.whole_image':'Whole image','route.skip':'Keep','route.region':'Local OCR','route.reuse':'Duplicate','search.placeholder':'Search slide, text or image ID',
+    'bulk.selected':'images selected','bulk.clear':'Clear selection','action.preserve':'Keep original','action.whole_image':'Translate whole image','action.region':'Local OCR','action.logo':'Mark as logo','action.reuse':'Reuse identical image',
+    'text.title':'Translation review','text.lead':'The image plan is locked. Edit any translated text before export.','text.blocks':'Text blocks','text.autosave':'Changes are saved automatically','text.render':'Generate and download PPTX','text.source':'Source','text.target':'Translation (editable)',
+    'approval.pending':'items awaiting confirmation','approval.note':'Image handling cannot be changed after the plan is locked','approval.budget':'Maximum budget (USD)','approval.allow_paid':'I allow paid image API calls within this budget','approval.lock':'Lock plan and continue',
+    'drawer.default_title':'Image details','dialog.title':'Confirm and lock the image plan','dialog.note':'Only the current plan will be executed. Any additional paid call is blocked once the budget limit is reached.','dialog.calls':'Paid image calls','dialog.cost':'Estimated cost','dialog.budget':'Maximum budget','dialog.target':'Target language','dialog.back':'Back to review','dialog.confirm':'Confirm and run',
+    'state.queued.title':'Job queued','state.queued.note':'Preparing the workspace','state.parsing.title':'Parsing document','state.parsing.note':'Reading slide structure, fonts and image assets','state.screening.title':'Screening images locally','state.screening.note':'Detecting text, logos, photos and duplicates without an image-generation API','state.localizing_text.title':'Translating text','state.localizing_text.note':'Images remain safely locked','state.localizing_images.title':'Executing the approved image plan','state.localizing_images.note':'Costs cannot exceed your limit','state.rendering.title':'Generating file','state.rendering.note':'Writing translations while preserving the original layout',
+    'reason.low_ocr_confidence':'Low OCR confidence','reason.ocr_noise':'Substantial OCR noise detected','reason.ambiguous_short_text':'Short text may be a label or brand','reason.borderline_ocr_confidence':'OCR result is not stable enough','reason.small_text_dense_asset':'Small, dense UI image with high automation risk','reason.local_ocr_unavailable':'Local OCR is unavailable','reason.text_rich_graphic':'Text-rich chart or infographic','reason.simple_text_regions':'A few clear text regions can be handled locally','reason.no_meaningful_text':'No meaningful text detected','reason.likely_logo_or_icon':'Likely a logo or icon','reason.too_small':'Image is too small','reason.exact_duplicate':'Exact duplicate of another image','reason.waiting':'Awaiting analysis',
+    'card.view':'View details','card.slide':'Slide {number}','card.no_text':'No readable text detected','card.characters':'{count} characters','card.choose':'Choose handling method',
+    'calls.estimated':'{count} estimated calls','calls.paid':'{count} paid calls','calls.value':'{count} calls','job.label':'{position}/{total} · Job {id} · {lang}',
+    'drawer.title':'Slide {number} · Image details','drawer.context':'Slide context','drawer.context_alt':'Slide preview','drawer.preview_unavailable':'Slide preview unavailable','drawer.original':'Original image','drawer.original_alt':'Original image','drawer.confidence':'OCR confidence','drawer.text':'Meaningful text','drawer.area':'Slide area','drawer.why':'Why this handling method','drawer.ocr':'Local OCR result','drawer.no_text':'No text detected','drawer.choose':'Choose handling method','drawer.none':'None',
+    'action_desc.preserve':'Do not modify the image; no charge','action_desc.whole_image':'Translate with an image model while preserving the design','action_desc.region':'Process only the detected text regions','action_desc.logo':'Protect brand assets and reuse this rule later','action_desc.reuse':'Reuse the result for the identical image',
+    'quality.failed':'QA failed','quality.rejected_preview':'Rejected generated result','quality.residual':'Untranslated source text','quality.missing':'Missing expected translation','quality.reason.residual_source_text':'Source-language text remains in the generated image','quality.reason.missing_target_text':'An expected translation is missing from the generated image','quality.reason.post_generation_ocr_empty':'No readable text was found in the generated image','quality.reason.post_generation_ocr_failed':'The generated image could not be verified by OCR','quality.reason.pre_generation_ocr_empty':'No source text map could be created','quality.reason.pre_generation_ocr_failed':'The source image could not be mapped by OCR','quality.reason.translation_mapping_incomplete':'The text translation map is incomplete','quality.reason.translation_mapping_unchanged':'Natural-language text was left untranslated before image generation','quality.reason.translation_mapping_missing':'The generated image has no verification map','quality.reason.image_generation_failed':'The image model did not return a usable image',
+    'error.choose_file':'Choose a document first','error.choose_target':'Choose at least one target language','error.job_failed':'Job failed','processing.preparing':'Preparing the {lang} version','processing.progress':'{position} / {total} · Local parsing and image screening','toast.reused':'Reused image decisions from the previous language version','toast.updated':'Updated {count} images','toast.saved':'Translation saved','toast.generated':'Generated {position}/{total} language versions','toast.all_done':'All selected language versions were generated and downloaded','text.render_lang':'Generate and download {lang} PPTX','text.all_done':'All language versions generated'
+  },
+  de: {
+    'app.title':'Translayer — Arbeitsbereich für Dokumentlokalisierung','brand.tagline':'Format bewahren. Sprache wechseln.','status.safe':'Lokale Prüfung aktiv · Kostenpflichtige Bild-API standardmäßig deaktiviert','language.label':'Oberflächensprache',
+    'step.upload':'Hochladen','step.images':'Bilder prüfen','step.text':'Übersetzung prüfen','step.export':'Exportieren',
+    'hero.eyebrow':'Arbeitsbereich für Dokumentlokalisierung','hero.title':'Damit jede Präsentation<br>eine andere Sprache natürlich spricht','hero.lead':'Bilder, Logos und Duplikate werden lokal erkannt. Anschließend bestätigen Sie Verarbeitung und Budget. Translayer startet erst, wenn Sie den Plan freigeben.',
+    'feature.format':'PPTX-Format bewahren','feature.images':'Text in Bildern übersetzen','feature.local':'Kostenlose lokale Prüfung','feature.budget':'Feste Budgetgrenze',
+    'upload.title':'Übersetzungsauftrag erstellen','upload.supported':'Unterstützt derzeit PPTX, DOCX und HTML','upload.drop':'Datei hier ablegen oder zum Auswählen klicken','upload.privacy':'Die Datei wird nur für diesen Übersetzungsauftrag verwendet','upload.start':'Lokale Analyse starten',
+    'field.source':'Ausgangssprache','field.targets':'Zielsprachen (Mehrfachauswahl)','field.engine':'Text-Engine','field.ocr':'Bild-OCR','engine.default':'Standard-Engine','engine.mock':'Offline-Demo','ocr.tesseract':'Tesseract (lokal)','ocr.paddle':'PaddleOCR (lokal)',
+    'processing.title':'Dokument wird analysiert','processing.note':'Struktur, Schriften und Bilder werden ohne Bildgenerierungs-API extrahiert',
+    'images.title':'Bildprüfung','images.lead':'Das System hat vorsichtige Empfehlungen erstellt. Klären Sie alle offenen Elemente und bestätigen Sie das Budget.','images.accept':'Sichere Empfehlung auf offene Elemente anwenden',
+    'metric.total':'Bilder gesamt','metric.total.note':'Bitmap-Grafiken in diesem Dokument','metric.whole':'Ganzbild-Kandidaten','metric.whole.note':'Textreiche Bilder mit hoher Sicherheit','metric.pending':'Bestätigung ausstehend','metric.pending.note':'Logos, Fotos, UI oder geringe Sicherheit','metric.safe':'Überspringen / wiederverwenden','metric.safe.note':'Keine Kosten für Bild-APIs','metric.cost':'Geschätzte Bildkosten','metric.cost.note':'Auf Basis des gewählten Plans',
+    'filter.all':'Alle','route.review':'Offen','route.whole_image':'Ganzbild','route.skip':'Beibehalten','route.region':'Lokale OCR','route.reuse':'Duplikat','search.placeholder':'Folie, Text oder Bild-ID suchen',
+    'bulk.selected':'Bilder ausgewählt','bulk.clear':'Auswahl löschen','action.preserve':'Original beibehalten','action.whole_image':'Ganzes Bild übersetzen','action.region':'Lokale OCR','action.logo':'Als Logo markieren','action.reuse':'Identisches Bild wiederverwenden',
+    'text.title':'Übersetzung prüfen','text.lead':'Der Bildplan ist gesperrt. Bearbeiten Sie die Übersetzung vor dem Export.','text.blocks':'Textblöcke','text.autosave':'Änderungen werden automatisch gespeichert','text.render':'PPTX erstellen und herunterladen','text.source':'Quelle','text.target':'Übersetzung (bearbeitbar)',
+    'approval.pending':'Elemente zu bestätigen','approval.note':'Nach dem Sperren kann die Bildverarbeitung nicht mehr geändert werden','approval.budget':'Höchstbudget (USD)','approval.allow_paid':'Kostenpflichtige Bild-API-Aufrufe innerhalb dieses Budgets erlauben','approval.lock':'Plan sperren und fortfahren',
+    'drawer.default_title':'Bilddetails','dialog.title':'Bildplan bestätigen und sperren','dialog.note':'Nur der aktuelle Plan wird ausgeführt. Weitere kostenpflichtige Aufrufe werden beim Erreichen der Budgetgrenze blockiert.','dialog.calls':'Kostenpflichtige Bildaufrufe','dialog.cost':'Geschätzte Kosten','dialog.budget':'Höchstbudget','dialog.target':'Zielsprache','dialog.back':'Zurück zur Prüfung','dialog.confirm':'Bestätigen und ausführen',
+    'state.queued.title':'Auftrag eingereiht','state.queued.note':'Arbeitsbereich wird vorbereitet','state.parsing.title':'Dokument wird analysiert','state.parsing.note':'Folienstruktur, Schriften und Bilder werden gelesen','state.screening.title':'Bilder werden lokal geprüft','state.screening.note':'Text, Logos, Fotos und Duplikate werden ohne Bildgenerierungs-API erkannt','state.localizing_text.title':'Text wird übersetzt','state.localizing_text.note':'Bilder bleiben sicher gesperrt','state.localizing_images.title':'Freigegebener Bildplan wird ausgeführt','state.localizing_images.note':'Die Kosten können Ihr Limit nicht überschreiten','state.rendering.title':'Datei wird erstellt','state.rendering.note':'Übersetzungen werden unter Beibehaltung des Layouts eingefügt',
+    'reason.low_ocr_confidence':'Geringe OCR-Sicherheit','reason.ocr_noise':'Deutliches OCR-Rauschen erkannt','reason.ambiguous_short_text':'Kurzer Text könnte Label oder Marke sein','reason.borderline_ocr_confidence':'OCR-Ergebnis ist nicht stabil genug','reason.small_text_dense_asset':'Kleine, dichte UI-Grafik mit hohem Automatisierungsrisiko','reason.local_ocr_unavailable':'Lokale OCR ist nicht verfügbar','reason.text_rich_graphic':'Textreiche Grafik oder Infografik','reason.simple_text_regions':'Wenige klare Textbereiche lokal verarbeitbar','reason.no_meaningful_text':'Kein relevanter Text erkannt','reason.likely_logo_or_icon':'Vermutlich Logo oder Symbol','reason.too_small':'Bild ist zu klein','reason.exact_duplicate':'Exaktes Duplikat eines anderen Bildes','reason.waiting':'Analyse ausstehend',
+    'card.view':'Details anzeigen','card.slide':'Folie {number}','card.no_text':'Kein lesbarer Text erkannt','card.characters':'{count} Zeichen','card.choose':'Verarbeitung wählen',
+    'calls.estimated':'{count} geschätzte Aufrufe','calls.paid':'{count} kostenpflichtige Aufrufe','calls.value':'{count} Aufrufe','job.label':'{position}/{total} · Auftrag {id} · {lang}',
+    'drawer.title':'Folie {number} · Bilddetails','drawer.context':'Folienkontext','drawer.context_alt':'Folienvorschau','drawer.preview_unavailable':'Folienvorschau nicht verfügbar','drawer.original':'Originalbild','drawer.original_alt':'Originalbild','drawer.confidence':'OCR-Sicherheit','drawer.text':'Relevanter Text','drawer.area':'Folienfläche','drawer.why':'Warum diese Verarbeitung','drawer.ocr':'Lokales OCR-Ergebnis','drawer.no_text':'Kein Text erkannt','drawer.choose':'Verarbeitung wählen','drawer.none':'Keine Angabe',
+    'action_desc.preserve':'Bild nicht ändern; keine Kosten','action_desc.whole_image':'Mit einem Bildmodell übersetzen und Design bewahren','action_desc.region':'Nur erkannte Textbereiche verarbeiten','action_desc.logo':'Markenelement schützen und Regel später wiederverwenden','action_desc.reuse':'Ergebnis für das identische Bild wiederverwenden',
+    'quality.failed':'Qualitätsprüfung fehlgeschlagen','quality.rejected_preview':'Abgelehntes Generierungsergebnis','quality.residual':'Nicht übersetzter Ausgangstext','quality.missing':'Fehlende erwartete Übersetzung','quality.reason.residual_source_text':'Im generierten Bild ist noch Ausgangstext vorhanden','quality.reason.missing_target_text':'Eine erwartete Übersetzung fehlt im generierten Bild','quality.reason.post_generation_ocr_empty':'Im generierten Bild wurde kein lesbarer Text gefunden','quality.reason.post_generation_ocr_failed':'Das generierte Bild konnte nicht per OCR geprüft werden','quality.reason.pre_generation_ocr_empty':'Es konnte keine Ausgangstextliste erstellt werden','quality.reason.pre_generation_ocr_failed':'Das Ausgangsbild konnte nicht per OCR erfasst werden','quality.reason.translation_mapping_incomplete':'Die Textübersetzungsliste ist unvollständig','quality.reason.translation_mapping_unchanged':'Fließtext blieb vor der Bildgenerierung unübersetzt','quality.reason.translation_mapping_missing':'Für das generierte Bild fehlt die Prüfliste','quality.reason.image_generation_failed':'Das Bildmodell hat kein verwendbares Bild zurückgegeben',
+    'error.choose_file':'Wählen Sie zuerst ein Dokument aus','error.choose_target':'Wählen Sie mindestens eine Zielsprache','error.job_failed':'Auftrag fehlgeschlagen','processing.preparing':'Version {lang} wird vorbereitet','processing.progress':'{position} / {total} · Lokale Analyse und Bildprüfung','toast.reused':'Bildentscheidungen der vorherigen Sprachversion übernommen','toast.updated':'{count} Bilder aktualisiert','toast.saved':'Übersetzung gespeichert','toast.generated':'{position}/{total} Sprachversionen erstellt','toast.all_done':'Alle gewählten Sprachversionen wurden erstellt und heruntergeladen','text.render_lang':'{lang}-PPTX erstellen und herunterladen','text.all_done':'Alle Sprachversionen erstellt'
+  },
+  zh: {
+    'app.title':'Translayer — 文档本地化工作台','brand.tagline':'保留格式，只改变语言。','status.safe':'本地审核已启用 · 付费图片 API 默认关闭','language.label':'界面语言',
+    'step.upload':'上传文件','step.images':'审核图片','step.text':'校对译文','step.export':'生成文件',
+    'hero.eyebrow':'文档本地化工作台','hero.title':'让每一份演示文稿<br>自然地说另一种语言','hero.lead':'先在本地识别图片、Logo 和重复素材，再由你确认处理方式与最高预算。只有锁定计划后，Translayer 才会开始执行。',
+    'feature.format':'保留 PPTX 格式','feature.images':'翻译图片内文字','feature.local':'零成本本地筛选','feature.budget':'严格预算上限',
+    'upload.title':'创建翻译任务','upload.supported':'目前支持 PPTX、DOCX 和 HTML','upload.drop':'拖放文件到这里，或点击选择','upload.privacy':'文件仅用于本次翻译任务','upload.start':'开始本地分析',
+    'field.source':'源语言','field.targets':'目标语言（可多选）','field.engine':'文本翻译引擎','field.ocr':'图片 OCR','engine.default':'默认引擎','engine.mock':'离线演示','ocr.tesseract':'Tesseract（本地）','ocr.paddle':'PaddleOCR（本地）',
+    'processing.title':'正在分析文档','processing.note':'提取结构、字体和图片，不调用生图 API',
+    'images.title':'图片审核','images.lead':'系统已给出保守建议。请处理所有待确认项并确认预算后继续。','images.accept':'将安全建议应用到待确认项',
+    'metric.total':'图片总数','metric.total.note':'文档中的位图素材','metric.whole':'整图候选','metric.whole.note':'高置信度文字丰富图片','metric.pending':'待确认','metric.pending.note':'Logo、照片、界面或低置信度图片','metric.safe':'跳过 / 复用','metric.safe.note':'不产生图片 API 费用','metric.cost':'预计图片费用','metric.cost.note':'基于当前选择的方案',
+    'filter.all':'全部','route.review':'待确认','route.whole_image':'整图处理','route.skip':'保留','route.region':'本地 OCR','route.reuse':'重复图片','search.placeholder':'搜索页码、文字或图片 ID',
+    'bulk.selected':'张图片已选中','bulk.clear':'清除选择','action.preserve':'保留原图','action.whole_image':'整图翻译','action.region':'本地 OCR','action.logo':'标记为 Logo','action.reuse':'复用相同图片',
+    'text.title':'译文校对','text.lead':'图片计划已锁定。导出前可编辑任何译文。','text.blocks':'文本块','text.autosave':'修改会自动保存','text.render':'生成并下载 PPTX','text.source':'原文','text.target':'译文（可编辑）',
+    'approval.pending':'项待确认','approval.note':'计划锁定后将不能修改图片处理方式','approval.budget':'最高预算（美元）','approval.allow_paid':'我确认允许在预算内调用付费图片 API','approval.lock':'锁定计划并继续',
+    'drawer.default_title':'图片详情','dialog.title':'确认并锁定图片计划','dialog.note':'系统只会执行当前计划。达到预算上限后，任何新增付费调用都会被阻止。','dialog.calls':'付费图片调用','dialog.cost':'预计费用','dialog.budget':'最高预算','dialog.target':'目标语言','dialog.back':'返回检查','dialog.confirm':'确认执行',
+    'state.queued.title':'任务已进入队列','state.queued.note':'正在准备工作区','state.parsing.title':'正在解析文档','state.parsing.note':'读取页面结构、字体与图片素材','state.screening.title':'正在本地筛选图片','state.screening.note':'识别文字、Logo、照片和重复素材，不调用生图 API','state.localizing_text.title':'正在翻译文本','state.localizing_text.note':'图片仍处于安全锁定状态','state.localizing_images.title':'正在执行已确认的图片计划','state.localizing_images.note':'费用不会超过你设定的上限','state.rendering.title':'正在生成文件','state.rendering.note':'写回译文并保持原始版式',
+    'reason.low_ocr_confidence':'OCR 置信度不足','reason.ocr_noise':'检测到较多 OCR 噪声','reason.ambiguous_short_text':'短文字：可能是标签或品牌','reason.borderline_ocr_confidence':'OCR 结果不够稳定','reason.small_text_dense_asset':'小尺寸密集界面，自动处理风险较高','reason.local_ocr_unavailable':'本地 OCR 不可用','reason.text_rich_graphic':'文字丰富的图表或信息图','reason.simple_text_regions':'少量明确文字，可局部处理','reason.no_meaningful_text':'未检测到需要翻译的文字','reason.likely_logo_or_icon':'疑似 Logo 或图标','reason.too_small':'尺寸过小','reason.exact_duplicate':'与其他图片完全相同','reason.waiting':'等待分析',
+    'card.view':'查看详情','card.slide':'第 {number} 页','card.no_text':'未检测到可读文字','card.characters':'{count} 字符','card.choose':'请选择处理方式',
+    'calls.estimated':'{count} 次预计调用','calls.paid':'{count} 次付费调用','calls.value':'{count} 次','job.label':'{position}/{total} · 任务 {id} · {lang}',
+    'drawer.title':'第 {number} 页 · 图片详情','drawer.context':'页面上下文','drawer.context_alt':'页面预览','drawer.preview_unavailable':'页面预览暂不可用','drawer.original':'原始图片','drawer.original_alt':'原始图片','drawer.confidence':'OCR 置信度','drawer.text':'有效文字','drawer.area':'页面占比','drawer.why':'为什么需要这个处理方式','drawer.ocr':'本地 OCR 结果','drawer.no_text':'未检测到文字','drawer.choose':'选择处理方式','drawer.none':'无',
+    'action_desc.preserve':'不修改图片，不产生费用','action_desc.whole_image':'由图像模型翻译并保持设计','action_desc.region':'仅处理检测到的文字区域','action_desc.logo':'保护品牌标识，后续可复用规则','action_desc.reuse':'复用相同图片的处理结果',
+    'quality.failed':'质量检查失败','quality.rejected_preview':'被拒绝的生成结果','quality.residual':'未翻译的源文字','quality.missing':'缺失的目标译文','quality.reason.residual_source_text':'生成图片中仍残留源语言文字','quality.reason.missing_target_text':'生成图片中缺少预期译文','quality.reason.post_generation_ocr_empty':'生成图片中未检测到可读文字','quality.reason.post_generation_ocr_failed':'无法使用 OCR 验证生成图片','quality.reason.pre_generation_ocr_empty':'无法建立源文字清单','quality.reason.pre_generation_ocr_failed':'无法使用 OCR 建立源图片文字映射','quality.reason.translation_mapping_incomplete':'文字翻译映射不完整','quality.reason.translation_mapping_unchanged':'生图前仍有自然语言文字未翻译','quality.reason.translation_mapping_missing':'生成图片缺少验证映射','quality.reason.image_generation_failed':'图片模型未返回可用图片',
+    'error.choose_file':'请先选择一个文档','error.choose_target':'请至少选择一种目标语言','error.job_failed':'任务失败','processing.preparing':'正在准备 {lang} 版本','processing.progress':'{position} / {total} · 本地解析与图片筛选','toast.reused':'已复用上一语言版本的图片决策','toast.updated':'已更新 {count} 张图片','toast.saved':'译文已保存','toast.generated':'已生成 {position}/{total} 个语言版本','toast.all_done':'所有选定语言版本已生成并下载','text.render_lang':'生成并下载 {lang} PPTX','text.all_done':'全部语言版本已生成'
   }
-  document.getElementById('review').classList.remove('hidden');
-}
-
-async function saveBlock(id, text) {
-  await api(`/jobs/${jobId}/blocks/${id}`, {
-    method:'PATCH',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ target_text: text }),
-  });
-}
-
-document.getElementById('render').onclick = async () => {
-  setState('Rendering…');
-  await api('/jobs/' + jobId + '/render', { method:'POST' });
-  window.location = '/jobs/' + jobId + '/download';
-  setState('Done. Download started.');
 };
-document.getElementById('refresh').onclick = loadReview;
-
-function escapeHtml(s) {
-  return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const storedLocale = localStorage.getItem('translayer.locale');
+let locale = ['en','de','zh'].includes(storedLocale) ? storedLocale : 'en';
+function t(key, vars={}) { let value=(MESSAGES[locale]&&MESSAGES[locale][key])||MESSAGES.en[key]||key; for(const [name,replacement] of Object.entries(vars))value=value.replaceAll(`{${name}}`,replacement); return value; }
+function applyLocale(){
+  document.documentElement.lang=locale==='zh'?'zh-CN':locale;document.title=t('app.title');
+  document.querySelectorAll('[data-i18n]').forEach(el=>el.innerHTML=t(el.dataset.i18n));
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>el.placeholder=t(el.dataset.i18nPlaceholder));
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>el.title=t(el.dataset.i18nTitle));
+  document.querySelectorAll('[data-i18n-aria]').forEach(el=>el.setAttribute('aria-label',t(el.dataset.i18nAria)));
+  document.querySelectorAll('[data-locale]').forEach(el=>el.classList.toggle('active',el.dataset.locale===locale));
+  if(!selectedFile)document.getElementById('fileName').textContent=t('upload.drop');
+  if(imagePlan){renderImagePlan();if(drawerImageId)openDrawer(drawerImageId);}
+  if(allTargetsDone)document.getElementById('renderBtn').textContent=t('text.all_done');
+  else if(currentTextLang)document.getElementById('renderBtn').textContent=t('text.render_lang',{lang:currentTextLang.toUpperCase()});
+  if(document.getElementById('confirmDialog').open)refreshConfirmSummary();
 }
+function setLocale(next){locale=next;localStorage.setItem('translayer.locale',next);applyLocale();}
+
+let jobId = null;
+let imagePlan = null;
+let currentFilter = 'all';
+let selectedImages = new Set();
+let drawerImageId = null;
+let sourceFile = null;
+let targetQueue = [];
+let targetPosition = 0;
+let sharedImageActions = new Map();
+let currentTextLang = null;
+let allTargetsDone = false;
+
+const stateCopy = {
+  queued:['state.queued.title','state.queued.note'], parsing:['state.parsing.title','state.parsing.note'],
+  screening:['state.screening.title','state.screening.note'], localizing_text:['state.localizing_text.title','state.localizing_text.note'],
+  localizing_images:['state.localizing_images.title','state.localizing_images.note'], rendering:['state.rendering.title','state.rendering.note']
+};
+const actionValues=['preserve','whole_image','region','logo','reuse'];
+
+async function api(path, opts={}) {
+  const response = await fetch(path, opts);
+  if (!response.ok) {
+    let message = response.statusText;
+    try { message = (await response.json()).detail || message; } catch (_) {}
+    throw new Error(message);
+  }
+  return response.json();
+}
+function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function localizedReason(reason,fallbackKey) { return reason&&MESSAGES.en[`reason.${reason}`]?t(`reason.${reason}`):(reason||t(fallbackKey)); }
+function qualityReason(reason='') { const code=String(reason).split(':')[0];const key=`quality.reason.${code}`;return MESSAGES.en[key]?t(key):(reason||t('quality.failed')); }
+function money(value) { return '$' + Number(value || 0).toFixed(2); }
+function showToast(message, error=false) { const t=document.getElementById('toast'); t.textContent=message; t.className='toast show'+(error?' error':''); clearTimeout(t._timer); t._timer=setTimeout(()=>t.className='toast',3200); }
+function setStep(name) { const order=['upload','images','text','export']; const index=order.indexOf(name); document.querySelectorAll('.step').forEach((el,i)=>{el.classList.toggle('active',i===index);el.classList.toggle('done',i<index);}); }
+function showView(id) { ['uploadView','processingView','imageView','textView'].forEach(view=>document.getElementById(view).classList.toggle('hidden',view!==id)); document.getElementById('approvalBar').classList.toggle('hidden',id!=='imageView'); }
+
+const fileInput=document.getElementById('file'), dropzone=document.getElementById('dropzone');
+let selectedFile=null;
+fileInput.onchange=()=>{selectedFile=fileInput.files[0]||null;document.getElementById('fileName').textContent=selectedFile?.name||t('upload.drop');};
+['dragenter','dragover'].forEach(event=>dropzone.addEventListener(event,e=>{e.preventDefault();dropzone.classList.add('drag');}));
+['dragleave','drop'].forEach(event=>dropzone.addEventListener(event,e=>{e.preventDefault();dropzone.classList.remove('drag');}));
+dropzone.addEventListener('drop',e=>{selectedFile=e.dataTransfer.files[0]||null;if(selectedFile)document.getElementById('fileName').textContent=selectedFile.name;});
+
+function syncTargets(){
+  const source=document.getElementById('from').value;
+  document.querySelectorAll('#targetOptions input').forEach(input=>{input.disabled=input.value===source;input.checked=!input.disabled;});
+  const enabled=[...document.querySelectorAll('#targetOptions input:not(:disabled)')];
+  if(!enabled.some(input=>input.checked))enabled.forEach(input=>input.checked=true);
+}
+document.getElementById('from').onchange=syncTargets;syncTargets();
+
+document.getElementById('startBtn').onclick=async()=>{
+  const file=selectedFile||fileInput.files[0]; if(!file){showToast(t('error.choose_file'),true);return;}
+  targetQueue=[...document.querySelectorAll('#targetOptions input:checked')].map(input=>input.value);if(!targetQueue.length){showToast(t('error.choose_target'),true);return;}
+  sourceFile=file;targetPosition=0;currentTextLang=null;allTargetsDone=false;sharedImageActions.clear();document.getElementById('renderBtn').disabled=false;document.getElementById('renderBtn').textContent=t('text.render');showView('processingView');await startNextTarget();
+};
+
+async function startNextTarget(){
+  try {
+    selectedImages.clear();drawerImageId=null;document.getElementById('allowPaid').checked=false;document.getElementById('budget').dataset.touched='';
+    const target=targetQueue[targetPosition],data=new FormData();data.append('file',sourceFile);data.append('source_lang',document.getElementById('from').value);data.append('target_lang',target);
+    const engine=document.getElementById('engine').value,ocr=document.getElementById('ocr').value;if(engine)data.append('translation_engine',engine);if(ocr)data.append('ocr_engine',ocr);
+    document.getElementById('processingTitle').textContent=t('processing.preparing',{lang:target.toUpperCase()});
+    document.getElementById('processingText').textContent=t('processing.progress',{position:targetPosition+1,total:targetQueue.length});
+    const job=await api('/jobs',{method:'POST',body:data});jobId=job.id;poll();
+  } catch(error){showView('uploadView');showToast(error.message,true);}
+}
+
+async function poll(){
+  try {
+    const job=await api('/jobs/'+jobId); const copy=stateCopy[job.state]; if(copy){document.getElementById('processingTitle').textContent=t(copy[0]);document.getElementById('processingText').textContent=t(copy[1]);}
+    if(job.state==='image_review'){setStep('images');showView('imageView');await loadImagePlan();return;}
+    if(job.state==='review'||job.state==='done'){setStep('text');showView('textView');await loadTextReview();return;}
+    if(job.state==='error'){throw new Error(job.error||t('error.job_failed'));}
+    showView('processingView');setTimeout(poll,700);
+  } catch(error){showToast(error.message,true);}
+}
+
+async function loadImagePlan(){
+  imagePlan=await api(`/jobs/${jobId}/image-plan`);
+  if(sharedImageActions.size){
+    const groups={};for(const item of imagePlan.images){const action=sharedImageActions.get(item.image_id);if(action)(groups[action]??=[]).push(item.image_id);}
+    for(const [action,imageIds] of Object.entries(groups)){imagePlan=await api(`/jobs/${jobId}/images/decisions/bulk`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_ids:imageIds,action})});}
+    showToast(t('toast.reused'));
+  }
+  renderImagePlan();
+}
+function renderImagePlan(){
+  const s=imagePlan.summary, routes=s.routes||{}; document.getElementById('jobChip').textContent=t('job.label',{position:targetPosition+1,total:targetQueue.length,id:jobId,lang:imagePlan.target_lang.toUpperCase()});
+  document.getElementById('mTotal').textContent=s.total_images;document.getElementById('mWhole').textContent=routes.whole_image||0;document.getElementById('mUnresolved').textContent=s.unresolved;document.getElementById('mSafe').textContent=(routes.skip||0)+(routes.reuse||0);
+  document.getElementById('mCost').textContent=money(s.estimated_total_cost_usd);document.getElementById('mCalls').textContent=t('calls.estimated',{count:s.planned_paid_calls});
+  document.getElementById('barUnresolved').textContent=s.unresolved;document.getElementById('barCost').textContent=money(s.estimated_total_cost_usd);document.getElementById('barCalls').textContent=t('calls.paid',{count:s.planned_paid_calls});
+  const budget=document.getElementById('budget'); if(!budget.dataset.touched)budget.value=(Math.ceil(s.estimated_total_cost_usd*100)/100).toFixed(2);
+  renderCards();updateApproval();updateBulkbar();
+}
+function visibleImages(){ const query=document.getElementById('search').value.trim().toLowerCase(); return imagePlan.images.filter(item=>{const route=item.decision?.action?item.selection?.route||'review':'review';const filter=currentFilter==='all'||route===currentFilter;const validation=item.localization_validation||{};const hay=`${item.image_id} ${item.slide_number} ${item.selection?.detected_text||''} ${(validation.residual_source_texts||[]).join(' ')} ${(validation.missing_target_texts||[]).join(' ')}`.toLowerCase();return filter&&(!query||hay.includes(query));}); }
+function renderCards(){
+  const cards=document.getElementById('imageCards'); cards.innerHTML='';
+  for(const item of visibleImages()){
+    const selection=item.selection||{},decision=item.decision||{},validation=item.localization_validation||{},route=selection.route||'review',action=decision.action||'',qualityFailed=validation.status==='failed'; const card=document.createElement('article');
+    const issueText=[...(validation.residual_source_texts||[]),...(validation.missing_target_texts||[])].join(' · ');
+    card.className='card'+(selectedImages.has(item.image_id)?' selected':'')+(!action?' unresolved':'')+(qualityFailed?' quality-failed':'');
+    card.innerHTML=`<input class="selectbox" type="checkbox" ${selectedImages.has(item.image_id)?'checked':''}><div class="thumb" data-view-label="${esc(t('card.view'))}"><img loading="lazy" src="${item.preview_url}" alt="${esc(item.image_id)}"><span class="slide-tag">${esc(t('card.slide',{number:item.slide_number||'—'}))}</span></div><div class="card-body"><div class="card-line"><span class="image-id" title="${esc(item.image_id)}">${esc(item.image_id)}</span><span class="badge badge-${qualityFailed?'review':route}">${esc(qualityFailed?t('quality.failed'):t(`route.${route}`))}</span></div><div class="reason">${esc(qualityFailed?qualityReason(validation.reason):localizedReason(selection.reason,'reason.waiting'))}</div><div class="ocr">${esc(qualityFailed?(issueText||qualityReason(validation.reason)):(selection.detected_text||t('card.no_text')))}</div><div class="confidence"><span>OCR ${Math.round(selection.mean_confidence||0)}%</span><span class="confidence-bar"><i class="confidence-fill" style="width:${Math.min(100,selection.mean_confidence||0)}%"></i></span><span>${esc(t('card.characters',{count:selection.text_chars||0}))}</span></div><select class="action-select ${action?'':'pending'}"><option value="">${esc(t('card.choose'))}</option>${actionValues.filter(value=>value!=='reuse'||route==='reuse').map(value=>`<option value="${value}" ${action===value?'selected':''}>${esc(t(`action.${value}`))}</option>`).join('')}</select></div>`;
+    card.querySelector('.thumb').onclick=()=>openDrawer(item.image_id); card.querySelector('.selectbox').onchange=e=>{e.target.checked?selectedImages.add(item.image_id):selectedImages.delete(item.image_id);renderCards();updateBulkbar();};
+    card.querySelector('select').onchange=e=>setDecision(item.image_id,e.target.value); cards.appendChild(card);
+  }
+}
+
+document.getElementById('filters').onclick=e=>{const button=e.target.closest('[data-filter]');if(!button)return;currentFilter=button.dataset.filter;document.querySelectorAll('.filter').forEach(b=>b.classList.toggle('active',b===button));renderCards();};
+document.getElementById('search').oninput=renderCards;
+async function setDecision(imageId,action){if(!action)return;try{imagePlan=await api(`/jobs/${jobId}/images/${imageId}/decision`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action})});renderImagePlan();if(drawerImageId===imageId)openDrawer(imageId);}catch(error){showToast(error.message,true);}}
+async function bulkDecision(imageIds,action){if(!imageIds.length)return;try{imagePlan=await api(`/jobs/${jobId}/images/decisions/bulk`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image_ids:imageIds,action})});selectedImages.clear();renderImagePlan();showToast(t('toast.updated',{count:imageIds.length}));}catch(error){showToast(error.message,true);}}
+document.getElementById('bulkbar').onclick=e=>{const action=e.target.dataset.bulk;if(action)bulkDecision([...selectedImages],action);};
+document.getElementById('clearSelection').onclick=()=>{selectedImages.clear();renderCards();updateBulkbar();};
+document.getElementById('acceptSafe').onclick=()=>{const unresolved=imagePlan.images.filter(i=>!i.decision?.action);bulkDecision(unresolved.map(i=>i.image_id),'preserve');};
+function updateBulkbar(){document.getElementById('bulkbar').classList.toggle('hidden',selectedImages.size===0);document.getElementById('selectedCount').textContent=selectedImages.size;}
+
+function openDrawer(imageId){
+  drawerImageId=imageId; const item=imagePlan.images.find(i=>i.image_id===imageId); if(!item)return; const s=item.selection||{},action=item.decision?.action||'',validation=item.localization_validation||{};
+  const rejectedPane=validation.status==='failed'&&item.localized_preview_url?`<div class="preview-pane rejected"><div class="preview-label">${esc(t('quality.rejected_preview'))}</div><img src="${item.localized_preview_url}" alt="${esc(t('quality.rejected_preview'))}"></div>`:'';
+  const residuals=(validation.residual_source_texts||[]).join(' · '),missing=(validation.missing_target_texts||[]).join(' · ');
+  const qualitySection=validation.status==='failed'?`<div class="detail-section"><h4>${esc(t('quality.failed'))}</h4><div class="quality-alert"><strong>${esc(qualityReason(validation.reason))}</strong>${residuals?`<br>${esc(t('quality.residual'))}: ${esc(residuals)}`:''}${missing?`<br>${esc(t('quality.missing'))}: ${esc(missing)}`:''}</div></div>`:'';
+  document.getElementById('drawerTitle').textContent=t('drawer.title',{number:item.slide_number});document.getElementById('drawerSub').textContent=item.image_id;
+  document.getElementById('drawerBody').innerHTML=`<div class="preview-grid"><div class="preview-pane"><div class="preview-label">${esc(t('drawer.context'))}</div><img class="slide-context-preview" src="${item.slide_preview_url}" alt="${esc(t('drawer.context_alt'))}"></div><div class="preview-pane"><div class="preview-label">${esc(t('drawer.original'))}</div><img src="${item.preview_url}" alt="${esc(t('drawer.original_alt'))}"></div>${rejectedPane}</div><div class="detail-grid"><div class="detail-stat"><span>${esc(t('drawer.confidence'))}</span><strong>${Math.round(s.mean_confidence||0)}%</strong></div><div class="detail-stat"><span>${esc(t('drawer.text'))}</span><strong>${esc(t('card.characters',{count:s.text_chars||0}))}</strong></div><div class="detail-stat"><span>${esc(t('drawer.area'))}</span><strong>${s.display_area_ratio?Math.round(s.display_area_ratio*100)+'%':'—'}</strong></div></div>${qualitySection}<div class="detail-section"><h4>${esc(t('drawer.why'))}</h4><div class="reason">${esc(localizedReason(s.reason,'drawer.none'))}</div></div><div class="detail-section"><h4>${esc(t('drawer.ocr'))}</h4><div class="ocr-full">${esc(s.detected_text||t('drawer.no_text'))}</div></div><div class="detail-section"><h4>${esc(t('drawer.choose'))}</h4><div class="decision-grid">${actionValues.filter(value=>value!=='reuse'||s.route==='reuse').map(value=>`<button class="decision-btn ${action===value?'active':''}" data-drawer-action="${value}"><strong>${esc(t(`action.${value}`))}</strong><span>${esc(decisionDescription(value))}</span></button>`).join('')}</div></div>`;
+  const contextPreview=document.querySelector('.slide-context-preview');contextPreview.onerror=()=>{const unavailable=document.createElement('div');unavailable.className='preview-unavailable';unavailable.textContent=t('drawer.preview_unavailable');contextPreview.replaceWith(unavailable);};
+  document.getElementById('drawer').classList.add('open');document.getElementById('drawerBackdrop').classList.add('open');
+}
+function decisionDescription(action){return t(`action_desc.${action}`);}
+document.getElementById('drawerBody').onclick=e=>{const b=e.target.closest('[data-drawer-action]');if(b)setDecision(drawerImageId,b.dataset.drawerAction);};
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawerBackdrop').classList.remove('open');drawerImageId=null;}
+document.getElementById('closeDrawer').onclick=closeDrawer;document.getElementById('drawerBackdrop').onclick=closeDrawer;
+
+document.getElementById('budget').oninput=e=>{e.target.dataset.touched='1';updateApproval();};document.getElementById('allowPaid').onchange=updateApproval;
+function updateApproval(){if(!imagePlan)return;const s=imagePlan.summary,budget=Number(document.getElementById('budget').value||0),allowed=document.getElementById('allowPaid').checked;const ok=s.unresolved===0&&budget+1e-9>=s.estimated_total_cost_usd&&(s.planned_paid_calls===0||allowed);document.getElementById('lockPlan').disabled=!ok;}
+function refreshConfirmSummary(){if(!imagePlan)return;const s=imagePlan.summary;document.getElementById('confirmCalls').textContent=t('calls.value',{count:s.planned_paid_calls});document.getElementById('confirmCost').textContent=money(s.estimated_total_cost_usd);document.getElementById('confirmBudget').textContent=money(document.getElementById('budget').value);document.getElementById('confirmLang').textContent=imagePlan.target_lang.toUpperCase();}
+document.getElementById('lockPlan').onclick=()=>{refreshConfirmSummary();document.getElementById('confirmDialog').showModal();};
+document.getElementById('cancelConfirm').onclick=()=>document.getElementById('confirmDialog').close();
+document.getElementById('confirmPlan').onclick=async()=>{document.getElementById('confirmDialog').close();try{for(const item of imagePlan.images){if(item.decision?.action)sharedImageActions.set(item.image_id,item.decision.action);}await api(`/jobs/${jobId}/image-plan/approve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({allow_paid_api:document.getElementById('allowPaid').checked,max_budget_usd:Number(document.getElementById('budget').value||0)})});showView('processingView');poll();}catch(error){showToast(error.message,true);}};
+
+async function loadTextReview(){const ir=await api(`/jobs/${jobId}/ir`),rows=document.getElementById('textRows');currentTextLang=ir.meta.target_lang;document.getElementById('textJobChip').textContent=t('job.label',{position:targetPosition+1,total:targetQueue.length,id:jobId,lang:currentTextLang.toUpperCase()});document.getElementById('renderBtn').textContent=t('text.render_lang',{lang:currentTextLang.toUpperCase()});rows.innerHTML='';for(const block of ir.blocks){if(block.type==='image'||!block.source_text)continue;const tr=document.createElement('tr'),source=document.createElement('td'),target=document.createElement('td'),ta=document.createElement('textarea');source.textContent=block.source_text;ta.value=block.target_text||'';ta.onchange=()=>saveBlock(block.id,ta.value);target.appendChild(ta);tr.append(source,target);rows.appendChild(tr);}}
+async function saveBlock(id,text){try{await api(`/jobs/${jobId}/blocks/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({target_text:text})});showToast(t('toast.saved'));}catch(error){showToast(error.message,true);}}
+document.getElementById('renderBtn').onclick=async()=>{try{showView('processingView');setStep('export');await api(`/jobs/${jobId}/render`,{method:'POST'});const link=document.createElement('a');link.href=`/jobs/${jobId}/download`;link.download='';document.body.appendChild(link);link.click();link.remove();targetPosition+=1;if(targetPosition<targetQueue.length){showToast(t('toast.generated',{position:targetPosition,total:targetQueue.length}));currentTextLang=null;setStep('images');setTimeout(startNextTarget,700);}else{showView('textView');allTargetsDone=true;currentTextLang=null;document.getElementById('renderBtn').disabled=true;document.getElementById('renderBtn').textContent=t('text.all_done');showToast(t('toast.all_done'));}}catch(error){showView('textView');showToast(error.message,true);}};
+document.querySelectorAll('[data-locale]').forEach(button=>button.onclick=()=>setLocale(button.dataset.locale));
+applyLocale();
 </script>
 </body>
 </html>

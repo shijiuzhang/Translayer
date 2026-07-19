@@ -74,7 +74,7 @@ class TesseractOCREngine(BaseOCREngine):
         raw: dict[tuple[int, int, int], list[int]] = defaultdict(list)
         for i in range(len(data["text"])):
             text = data["text"][i].strip()
-            conf = int(data["conf"][i])
+            conf = float(data["conf"][i])
             if not text or conf < self.MIN_CONFIDENCE:
                 continue
             key = (data["block_num"][i], data["par_num"][i], data["line_num"][i])

@@ -41,6 +41,36 @@ class Settings:
     gemini_image_model: str = field(
         default_factory=lambda: _env("TRANSLAYER_GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
     )
+    gemini_image_api_enabled: bool = field(
+        default_factory=lambda: _env("TRANSLAYER_ALLOW_PAID_IMAGE_API", "").lower()
+        in {"1", "true", "yes"}
+    )
+    gemini_image_max_calls: int = field(
+        default_factory=lambda: int(_env("TRANSLAYER_IMAGE_MAX_CALLS", "0"))
+    )
+    gemini_image_budget_usd: float = field(
+        default_factory=lambda: float(_env("TRANSLAYER_IMAGE_BUDGET_USD", "0"))
+    )
+    gemini_image_estimated_cost_usd: float = field(
+        default_factory=lambda: float(_env("TRANSLAYER_IMAGE_ESTIMATED_COST_USD", "0.08"))
+    )
+    gemini_image_cache_dir: str = field(
+        default_factory=lambda: _env(
+            "TRANSLAYER_IMAGE_CACHE_DIR", ".translayer_cache/gemini-images"
+        )
+    )
+
+    # Local, zero-provider-cost image screening
+    image_selection_enabled: bool = field(
+        default_factory=lambda: _env("TRANSLAYER_IMAGE_SELECTION", "true").lower()
+        not in {"0", "false", "no"}
+    )
+    image_selection_cache_dir: str = field(
+        default_factory=lambda: _env(
+            "TRANSLAYER_IMAGE_SELECTION_CACHE_DIR",
+            ".translayer_cache/image-selection",
+        )
+    )
 
     # Storage
     jobs_dir: str = field(default_factory=lambda: _env("TRANSLAYER_JOBS_DIR", ".translayer_jobs"))

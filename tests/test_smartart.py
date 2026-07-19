@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
+import pytest
+
 from translayer.parsers.pptx_parser import PptxParser
 from translayer.renderers.pptx_renderer import PptxRenderer
 
@@ -74,3 +76,27 @@ def test_renderer_replaces_point_text() -> None:
     # Original multi-paragraph text should be gone.
     all_text = "".join(t.text or "" for t in t_elem.findall(f".//{_qtag(_NS_A, 't')}"))
     assert all_text == "业务用例"
+
+
+@pytest.mark.parametrize(("language", "tag"), [("de", "de-DE"), ("en", "en-US")])
+def test_renderer_sets_target_language_metadata(language: str, tag: str) -> None:
+    renderer = PptxRenderer()
+    root = ET.fromstring(_sample_data_xml())
+    point = root.findall(f".//{_qtag(_NS_DGM, 'pt')}")[0]
+
+    renderer._set_point_text(point, "Localized", language_tag=tag)
+
+    properties = point.find(f".//{_qtag(_NS_A, 'rPr')}")
+    assert properties is not None
+    assert properties.get("lang") == tag
+
+
+def test_renderer_sets_east_asian_font_for_chinese() -> None:
+    root = ET.fromstring(_sample_data_xml())
+    point = root.findall(f".//{_qtag(_NS_DGM, 'pt')}")[0]
+
+    PptxRenderer._set_point_text(point, "业务用例")
+
+    east_asian = point.find(f".//{_qtag(_NS_A, 'ea')}")
+    assert east_asian is not None
+    assert east_asian.get("typeface") == "Microsoft YaHei"

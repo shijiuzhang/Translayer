@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+ImageDecisionAction = Literal["preserve", "whole_image", "region", "logo", "reuse"]
 
 
 class BlockEdit(BaseModel):
@@ -11,6 +15,20 @@ class BlockEdit(BaseModel):
 
 class RegionEdit(BaseModel):
     target_text: str
+
+
+class ImageDecisionEdit(BaseModel):
+    action: ImageDecisionAction
+
+
+class BulkImageDecisionEdit(BaseModel):
+    image_ids: list[str] = Field(min_length=1)
+    action: ImageDecisionAction
+
+
+class ApproveImagePlan(BaseModel):
+    allow_paid_api: bool = False
+    max_budget_usd: float = Field(default=0.0, ge=0.0)
 
 
 class JobSummary(BaseModel):
