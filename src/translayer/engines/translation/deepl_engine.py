@@ -22,6 +22,12 @@ class DeepLEngine(BaseTranslationEngine):
 
     name = "deepl"
 
+    def __init__(self, *, api_key: str | None = None, base_url: str | None = None) -> None:
+        self.api_key = settings.deepl_api_key if api_key is None else api_key.strip()
+        self.base_url = base_url.strip().rstrip("/") if base_url else None
+        if self.base_url and not self.base_url.startswith(("http://", "https://")):
+            raise ValueError("DeepL base URL must use http:// or https://")
+
     def translate(
         self,
         texts: list[str],
@@ -31,21 +37,22 @@ class DeepLEngine(BaseTranslationEngine):
         glossary: dict[str, str] | None = None,
         max_chars: list[int | None] | None = None,
     ) -> list[str]:
-        del context
-        if not settings.deepl_api_key:
+        if not self.api_key:
             raise RuntimeError("DeepL translation engine requires DEEPL_API_KEY")
         if not texts:
             return []
 
-        endpoint = self._endpoint(settings.deepl_api_key)
+        endpoint = self._endpoint(self.api_key, self.base_url)
         data = {
-            "auth_key": settings.deepl_api_key,
             "source_lang": self._lang(src),
             "target_lang": self._lang(tgt),
             "text": texts,
         }
+        if context:
+            data["context"] = context
+        headers = {"Authorization": f"DeepL-Auth-Key {self.api_key}"}
         with httpx.Client(timeout=60) as client:
-            response = client.post(endpoint, data=data)
+            response = client.post(endpoint, json=data, headers=headers)
             response.raise_for_status()
             payload = response.json()
 
@@ -56,7 +63,9 @@ class DeepLEngine(BaseTranslationEngine):
         return self.enforce_max_chars(translated, max_chars)
 
     @staticmethod
-    def _endpoint(api_key: str) -> str:
+    def _endpoint(api_key: str, base_url: str | None = None) -> str:
+        if base_url:
+            return base_url if base_url.endswith("/v2/translate") else f"{base_url}/v2/translate"
         if api_key.endswith(":fx"):
             return "https://api-free.deepl.com/v2/translate"
         return "https://api.deepl.com/v2/translate"

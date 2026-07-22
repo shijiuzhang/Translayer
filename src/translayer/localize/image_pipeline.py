@@ -28,6 +28,7 @@ def localize_images(
     ir: DocumentIR,
     translation_engine: str = "openai",
     inpaint_engine: str = "pillow",
+    translation_options: dict | None = None,
 ) -> DocumentIR:
     images = [
         image
@@ -39,7 +40,9 @@ def localize_images(
     if not images:
         return ir
 
-    translator = registry.get("translation", translation_engine)
+    translator = registry.get(
+        "translation", translation_engine, **(translation_options or {})
+    )
     inpainter = registry.get("inpaint", inpaint_engine)
     src, tgt = ir.meta.source_lang, ir.meta.target_lang
 

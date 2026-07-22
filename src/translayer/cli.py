@@ -17,6 +17,15 @@ def translate(
     from_lang: str = typer.Option("en", "--from", help="Source language"),
     to_lang: str = typer.Option("zh", "--to", help="Target language"),
     engine: str | None = typer.Option(None, "--engine", help="Translation engine key"),
+    api_url: str | None = typer.Option(
+        None, "--api-url", help="OpenAI-compatible or DeepL API base URL"
+    ),
+    api_key: str | None = typer.Option(
+        None, "--api-key", help="Translation provider API key (optional for local APIs)"
+    ),
+    model: str | None = typer.Option(
+        None, "--model", help="OpenAI-compatible model name"
+    ),
     ocr_engine: str | None = typer.Option(None, "--ocr-engine", help="OCR engine key (tesseract, cloud_vision, paddle, mock)"),
     inpaint_engine: str | None = typer.Option(None, "--inpaint-engine", help="Inpaint engine key (pillow, opencv, lama)"),
     glossary: str | None = typer.Option(None, "--glossary", help="CSV glossary (source,target)"),
@@ -30,12 +39,23 @@ def translate(
     """Translate a document end-to-end."""
     from translayer.pipeline import translate_document
 
+    selected_engine = engine or "openai"
+    translation_options = {
+        key: value
+        for key, value in {
+            "base_url": api_url,
+            "api_key": api_key,
+            "model": model if selected_engine == "openai" else None,
+        }.items()
+        if value is not None
+    }
     translate_document(
         input_path, output,
         source_lang=from_lang, target_lang=to_lang,
         translation_engine=engine, ocr_engine=ocr_engine,
         inpaint_engine=inpaint_engine, glossary=glossary,
         images=not no_images, screen_images=not no_image_screening,
+        translation_options=translation_options,
     )
     typer.echo(f"Wrote {output}")
 
@@ -78,6 +98,15 @@ def translate_image(
     translation_engine: str | None = typer.Option(
         None, "--translation-engine", help="Engine used to build the explicit text map"
     ),
+    translation_api_url: str | None = typer.Option(
+        None, "--translation-api-url", help="Translation API base URL"
+    ),
+    translation_api_key: str | None = typer.Option(
+        None, "--translation-api-key", help="Translation provider API key"
+    ),
+    translation_model: str | None = typer.Option(
+        None, "--translation-model", help="OpenAI-compatible translation model"
+    ),
     ocr_engine: str = typer.Option(
         "tesseract", "--ocr-engine", help="OCR engine used before and after generation"
     ),
@@ -119,11 +148,22 @@ def translate_image(
         bypass_route=True,
         strict=True,
     )
+    selected_translation_engine = translation_engine or settings.translation_engine
+    translation_options = {
+        key: value
+        for key, value in {
+            "base_url": translation_api_url,
+            "api_key": translation_api_key,
+            "model": translation_model if selected_translation_engine == "openai" else None,
+        }.items()
+        if value is not None
+    }
     mappings = prepare_text_mappings(
         image,
-        translation_engine=translation_engine or settings.translation_engine,
+        translation_engine=selected_translation_engine,
         source_lang=from_lang,
         target_lang=to_lang,
+        translation_options=translation_options,
     )
     guard = ImageAPICostGuard(
         enabled=allow_paid_api,

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-07-23
+
+### Added
+
+- Task-scoped OpenAI-compatible translation settings in the web UI and API: base URL, optional API key, and model name, including support for local and private-network endpoints.
+- Task-scoped DeepL API authentication in the web UI and API, with automatic Free/Pro endpoint selection.
+- Optional task-scoped Gemini API key and image-model selection, clearly marked as necessary only for whole-image text editing.
+- Public, non-secret runtime configuration for displaying the configured per-image planning estimate.
+- Up-front and post-screening image cost forecasts showing estimated calls, per-image cost, projected total, and the user-approved hard budget.
+- Simplified Chinese and German README editions.
+
+### Changed
+
+- DeepL translation now uses the current JSON `POST /v2/translate` request format and `DeepL-Auth-Key` authorization header.
+- Translation and Gemini credentials are kept per job in server memory and are not exposed by public job responses.
+- Gemini model selection is included in the generated-image cache key.
+- Image cost estimation now consistently uses `TRANSLAYER_IMAGE_ESTIMATED_COST_USD` instead of mismatched hard-coded values.
+- Bumped version to `0.2.1`.
+
 ## [0.2.0] - 2026-07-19
 
 ### Added

@@ -29,6 +29,8 @@ class BulkImageDecisionEdit(BaseModel):
 class ApproveImagePlan(BaseModel):
     allow_paid_api: bool = False
     max_budget_usd: float = Field(default=0.0, ge=0.0)
+    gemini_api_key: str | None = None
+    gemini_model: str | None = None
 
 
 class JobSummary(BaseModel):

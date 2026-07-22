@@ -17,6 +17,23 @@ class OpenAIEngine(BaseTranslationEngine):
 
     name = "openai"
 
+    def __init__(
+        self,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+    ) -> None:
+        self.api_key = settings.openai_api_key if api_key is None else api_key.strip()
+        self.base_url = (base_url or settings.openai_base_url).strip().rstrip("/")
+        self.model = (model or settings.openai_model).strip()
+        if not self.base_url:
+            raise ValueError("OpenAI-compatible base URL is required")
+        if not self.model:
+            raise ValueError("OpenAI-compatible model name is required")
+        if not self.base_url.startswith(("http://", "https://")):
+            raise ValueError("OpenAI-compatible base URL must use http:// or https://")
+
     def translate(
         self,
         texts: list[str],
@@ -26,14 +43,12 @@ class OpenAIEngine(BaseTranslationEngine):
         glossary: dict[str, str] | None = None,
         max_chars: list[int | None] | None = None,
     ) -> list[str]:
-        if not settings.openai_api_key:
-            raise RuntimeError("OpenAI translation engine requires OPENAI_API_KEY")
         if not texts:
             return []
 
         prompt = self.build_prompt(texts, src, tgt, context, glossary, max_chars)
         payload: dict[str, Any] = {
-            "model": settings.openai_model,
+            "model": self.model,
             "messages": [
                 {
                     "role": "system",
@@ -45,11 +60,15 @@ class OpenAIEngine(BaseTranslationEngine):
             ],
             "temperature": 0,
         }
-        base_url = settings.openai_base_url.rstrip("/")
-        headers = {"Authorization": f"Bearer {settings.openai_api_key}"}
+        endpoint = (
+            self.base_url
+            if self.base_url.endswith("/chat/completions")
+            else f"{self.base_url}/chat/completions"
+        )
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
 
         with httpx.Client(timeout=60) as client:
-            response = client.post(f"{base_url}/chat/completions", json=payload, headers=headers)
+            response = client.post(endpoint, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
 

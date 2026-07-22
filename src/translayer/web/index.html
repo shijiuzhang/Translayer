@@ -66,7 +66,13 @@
   .target-option span { min-height:38px; display:grid; place-items:center; border:1px solid #d0d5dd; border-radius:10px; background:#fff; color:#475467; font-size:11px; font-weight:700; transition:.16s; }
   .target-option input:checked + span { color:var(--blue); border-color:#84adf4; background:var(--blue-soft); box-shadow:0 0 0 2px rgba(40,100,220,.08); }
   .target-option input:disabled + span { opacity:.35; cursor:not-allowed; text-decoration:line-through; }
-  select,input[type="number"],input[type="search"] { width:100%; margin-top:6px; border:1px solid #d0d5dd; border-radius:10px; background:#fff; color:var(--ink); padding:10px 11px; outline:none; }
+  select,input[type="number"],input[type="search"],input[type="text"],input[type="password"],input[type="url"] { width:100%; margin-top:6px; border:1px solid #d0d5dd; border-radius:10px; background:#fff; color:var(--ink); padding:10px 11px; outline:none; }
+  .provider-config { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:12px; border:1px solid var(--line); border-radius:12px; background:#f8fafc; }
+  .provider-config .wide { grid-column:1/-1; }
+  .image-provider-config { grid-column:1/-1; padding:12px; border:1px solid #d8cafa; border-radius:12px; background:var(--violet-soft); }
+  .image-provider-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px; }
+  .cost-preview { color:var(--violet); font-size:11px; font-weight:700; margin-top:8px; }
+  .dialog-provider { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; padding:12px; border-radius:12px; background:var(--violet-soft); }
   select:focus,input:focus,textarea:focus { border-color:#84adf4; box-shadow:0 0 0 3px var(--blue-soft); }
   .btn { border:0; border-radius:10px; min-height:40px; padding:0 15px; display:inline-flex; align-items:center; justify-content:center; gap:7px; font-weight:700; font-size:13px; transition:.16s; }
   .btn:hover { transform:translateY(-1px); }
@@ -254,8 +260,23 @@
       <div class="form-grid">
         <label class="field"><span data-i18n="field.source">Source language</span><select id="from"><option value="en">English</option><option value="de">Deutsch</option><option value="zh">中文</option></select></label>
         <div class="field"><span class="field-label" data-i18n="field.targets">Target languages (multiple allowed)</span><div class="target-options" id="targetOptions"><label class="target-option"><input type="checkbox" value="zh" checked><span>中文</span></label><label class="target-option"><input type="checkbox" value="de" checked><span>Deutsch</span></label><label class="target-option"><input type="checkbox" value="en"><span>English</span></label></div></div>
-        <label class="field"><span data-i18n="field.engine">Text engine</span><select id="engine"><option value="" data-i18n="engine.default">Default engine</option><option value="mock" data-i18n="engine.mock">Offline demo</option><option value="openai">OpenAI</option><option value="deepl">DeepL</option></select></label>
+        <label class="field"><span data-i18n="field.engine">Text engine</span><select id="engine"><option value="openai" data-i18n="engine.compatible">OpenAI-compatible API</option><option value="deepl">DeepL API</option><option value="mock" data-i18n="engine.mock">Offline demo</option></select></label>
         <label class="field"><span data-i18n="field.ocr">Image OCR</span><select id="ocr"><option value="tesseract" data-i18n="ocr.tesseract">Tesseract (local)</option><option value="paddle" data-i18n="ocr.paddle">PaddleOCR (local)</option><option value="mock" data-i18n="engine.mock">Offline demo</option><option value="cloud_vision">Cloud Vision</option></select></label>
+        <div class="provider-config" id="providerConfig">
+          <label class="field wide" id="apiUrlField"><span data-i18n="field.api_url">API base URL</span><input type="url" id="translationApiUrl" value="https://api.openai.com/v1" autocomplete="url" /></label>
+          <label class="field"><span data-i18n="field.api_key">API key</span><input type="password" id="translationApiKey" autocomplete="off" /></label>
+          <label class="field" id="modelField"><span data-i18n="field.model">Model name</span><input type="text" id="translationModel" value="gpt-4o-mini" autocomplete="off" /></label>
+          <div class="panel-note wide" id="providerHint" data-i18n="engine.compatible_hint">For a local API, enter its /v1 base URL. The API key may be left blank if authentication is disabled.</div>
+        </div>
+        <div class="image-provider-config">
+          <div class="field-label" data-i18n="gemini.title">Optional: Gemini image-text translation</div>
+          <div class="panel-note" data-i18n="gemini.note">Only enter a Gemini API key if you want Translayer to modify text inside complex images. It is not needed for normal document text translation.</div>
+          <div class="image-provider-fields">
+            <label class="field"><span data-i18n="gemini.api_key">Gemini API Key</span><input type="password" id="geminiApiKey" autocomplete="off" /></label>
+            <label class="field"><span data-i18n="gemini.model">Gemini image model</span><input type="text" id="geminiModel" autocomplete="off" /></label>
+          </div>
+          <div class="cost-preview" id="geminiCostPreview">Planning estimate: about $0.08 per modified image. The total is calculated after local image screening; actual provider billing may differ.</div>
+        </div>
       </div>
       <button class="btn btn-primary btn-block" id="startBtn"><span data-i18n="upload.start">Start local analysis</span> <span>→</span></button>
     </div>
@@ -299,7 +320,7 @@
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
 <aside class="drawer" id="drawer"><div class="drawer-head"><div><div class="drawer-title" id="drawerTitle" data-i18n="drawer.default_title">Image details</div><div class="panel-note" id="drawerSub" style="margin:3px 0 0"></div></div><button class="icon-btn" id="closeDrawer">×</button></div><div class="drawer-body" id="drawerBody"></div></aside>
 
-<dialog id="confirmDialog"><div class="dialog-body"><h3 data-i18n="dialog.title">Confirm and lock the image plan</h3><p data-i18n="dialog.note">Only the current plan will be executed. Any additional paid call is blocked once the budget limit is reached.</p><div class="confirm-summary"><div><span data-i18n="dialog.calls">Paid image calls</span><strong id="confirmCalls">0 calls</strong></div><div><span data-i18n="dialog.cost">Estimated cost</span><strong id="confirmCost">$0.00</strong></div><div><span data-i18n="dialog.budget">Maximum budget</span><strong id="confirmBudget">$0.00</strong></div><div><span data-i18n="dialog.target">Target language</span><strong id="confirmLang">—</strong></div></div><div class="dialog-actions"><button class="btn btn-secondary" id="cancelConfirm" data-i18n="dialog.back">Back to review</button><button class="btn btn-primary" id="confirmPlan" data-i18n="dialog.confirm">Confirm and run</button></div></div></dialog>
+<dialog id="confirmDialog"><div class="dialog-body"><h3 data-i18n="dialog.title">Confirm and lock the image plan</h3><p data-i18n="dialog.note">Only the current plan will be executed. Any additional paid call is blocked once the budget limit is reached.</p><div class="confirm-summary"><div><span data-i18n="dialog.calls">Paid image calls</span><strong id="confirmCalls">0 calls</strong></div><div><span data-i18n="dialog.cost">Estimated cost</span><strong id="confirmCost">$0.00</strong></div><div><span data-i18n="dialog.budget">Maximum budget</span><strong id="confirmBudget">$0.00</strong></div><div><span data-i18n="dialog.target">Target language</span><strong id="confirmLang">—</strong></div></div><div class="dialog-provider hidden" id="dialogGeminiConfig"><label class="field"><span data-i18n="gemini.api_key_required">Gemini API Key (required for this plan)</span><input type="password" id="dialogGeminiApiKey" autocomplete="off" /></label><label class="field"><span data-i18n="gemini.model">Gemini image model</span><input type="text" id="dialogGeminiModel" autocomplete="off" /></label><div class="panel-note" style="grid-column:1/-1" id="dialogGeminiEstimate"></div></div><div class="dialog-actions"><button class="btn btn-secondary" id="cancelConfirm" data-i18n="dialog.back">Back to review</button><button class="btn btn-primary" id="confirmPlan" data-i18n="dialog.confirm">Confirm and run</button></div></div></dialog>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -310,7 +331,7 @@ const MESSAGES = {
     'hero.eyebrow':'Document localization workspace','hero.title':'Make every presentation<br>speak another language naturally','hero.lead':'Identify images, logos and duplicate assets locally, then confirm the handling method and maximum budget. Translayer starts only after you lock the plan.',
     'feature.format':'Preserve PPTX formatting','feature.images':'Translate text in images','feature.local':'Zero-cost local screening','feature.budget':'Hard budget limit',
     'upload.title':'Create translation job','upload.supported':'Currently supports PPTX, DOCX and HTML','upload.drop':'Drop a file here or click to choose','upload.privacy':'The file is used only for this translation job','upload.start':'Start local analysis',
-    'field.source':'Source language','field.targets':'Target languages (multiple allowed)','field.engine':'Text engine','field.ocr':'Image OCR','engine.default':'Default engine','engine.mock':'Offline demo','ocr.tesseract':'Tesseract (local)','ocr.paddle':'PaddleOCR (local)',
+    'field.source':'Source language','field.targets':'Target languages (multiple allowed)','field.engine':'Text engine','field.ocr':'Image OCR','field.api_url':'API base URL','field.api_key':'API key','field.model':'Model name','engine.compatible':'OpenAI-compatible API','engine.compatible_hint':'For a local API, enter its /v1 base URL. The API key may be left blank if authentication is disabled.','engine.deepl_hint':'DeepL Free and Pro keys are detected automatically. The key stays in this server process for this job only.','engine.mock':'Offline demo','ocr.tesseract':'Tesseract (local)','ocr.paddle':'PaddleOCR (local)','gemini.title':'Optional: Gemini image-text translation','gemini.note':'Only enter a Gemini API key if you want Translayer to modify text inside complex images. It is not needed for normal document text translation.','gemini.api_key':'Gemini API Key','gemini.api_key_required':'Gemini API Key (required for this plan)','gemini.model':'Gemini image model','gemini.estimate':'Planning estimate: about {cost} per modified image. The total is calculated after local image screening; actual provider billing may differ.','gemini.plan_estimate':'This plan may cost about {total}: {count} image calls × {cost}. Actual provider billing may differ.',
     'processing.title':'Analyzing document','processing.note':'Extracting structure, fonts and images without calling an image-generation API',
     'images.title':'Image review','images.lead':'The system has made conservative recommendations. Resolve every pending item and confirm the budget to continue.','images.accept':'Apply safe recommendation to pending items',
     'metric.total':'Total images','metric.total.note':'Bitmap assets in this document','metric.whole':'Whole-image candidates','metric.whole.note':'High-confidence text-rich images','metric.pending':'Awaiting confirmation','metric.pending.note':'Logos, photos, UI or low confidence','metric.safe':'Skip / reuse','metric.safe.note':'No image API charges','metric.cost':'Estimated image cost','metric.cost.note':'Based on the selected plan',
@@ -334,7 +355,7 @@ const MESSAGES = {
     'hero.eyebrow':'Arbeitsbereich für Dokumentlokalisierung','hero.title':'Damit jede Präsentation<br>eine andere Sprache natürlich spricht','hero.lead':'Bilder, Logos und Duplikate werden lokal erkannt. Anschließend bestätigen Sie Verarbeitung und Budget. Translayer startet erst, wenn Sie den Plan freigeben.',
     'feature.format':'PPTX-Format bewahren','feature.images':'Text in Bildern übersetzen','feature.local':'Kostenlose lokale Prüfung','feature.budget':'Feste Budgetgrenze',
     'upload.title':'Übersetzungsauftrag erstellen','upload.supported':'Unterstützt derzeit PPTX, DOCX und HTML','upload.drop':'Datei hier ablegen oder zum Auswählen klicken','upload.privacy':'Die Datei wird nur für diesen Übersetzungsauftrag verwendet','upload.start':'Lokale Analyse starten',
-    'field.source':'Ausgangssprache','field.targets':'Zielsprachen (Mehrfachauswahl)','field.engine':'Text-Engine','field.ocr':'Bild-OCR','engine.default':'Standard-Engine','engine.mock':'Offline-Demo','ocr.tesseract':'Tesseract (lokal)','ocr.paddle':'PaddleOCR (lokal)',
+    'field.source':'Ausgangssprache','field.targets':'Zielsprachen (Mehrfachauswahl)','field.engine':'Text-Engine','field.ocr':'Bild-OCR','field.api_url':'API-Basis-URL','field.api_key':'API-Schlüssel','field.model':'Modellname','engine.compatible':'OpenAI-kompatible API','engine.compatible_hint':'Für eine lokale API die /v1-Basis-URL eingeben. Ohne Authentifizierung kann der API-Schlüssel leer bleiben.','engine.deepl_hint':'DeepL Free- und Pro-Schlüssel werden automatisch erkannt. Der Schlüssel bleibt nur für diesen Auftrag im Serverprozess.','engine.mock':'Offline-Demo','ocr.tesseract':'Tesseract (lokal)','ocr.paddle':'PaddleOCR (lokal)','gemini.title':'Optional: Gemini-Bildtextübersetzung','gemini.note':'Geben Sie einen Gemini-API-Schlüssel nur ein, wenn Translayer Text in komplexen Bildern ändern soll. Für normalen Dokumenttext ist er nicht erforderlich.','gemini.api_key':'Gemini-API-Schlüssel','gemini.api_key_required':'Gemini-API-Schlüssel (für diesen Plan erforderlich)','gemini.model':'Gemini-Bildmodell','gemini.estimate':'Planungsschätzung: etwa {cost} pro geändertem Bild. Die Gesamtsumme wird nach der lokalen Bildprüfung berechnet; die tatsächliche Abrechnung kann abweichen.','gemini.plan_estimate':'Dieser Plan kann etwa {total} kosten: {count} Bildaufrufe × {cost}. Die tatsächliche Abrechnung kann abweichen.',
     'processing.title':'Dokument wird analysiert','processing.note':'Struktur, Schriften und Bilder werden ohne Bildgenerierungs-API extrahiert',
     'images.title':'Bildprüfung','images.lead':'Das System hat vorsichtige Empfehlungen erstellt. Klären Sie alle offenen Elemente und bestätigen Sie das Budget.','images.accept':'Sichere Empfehlung auf offene Elemente anwenden',
     'metric.total':'Bilder gesamt','metric.total.note':'Bitmap-Grafiken in diesem Dokument','metric.whole':'Ganzbild-Kandidaten','metric.whole.note':'Textreiche Bilder mit hoher Sicherheit','metric.pending':'Bestätigung ausstehend','metric.pending.note':'Logos, Fotos, UI oder geringe Sicherheit','metric.safe':'Überspringen / wiederverwenden','metric.safe.note':'Keine Kosten für Bild-APIs','metric.cost':'Geschätzte Bildkosten','metric.cost.note':'Auf Basis des gewählten Plans',
@@ -358,7 +379,7 @@ const MESSAGES = {
     'hero.eyebrow':'文档本地化工作台','hero.title':'让每一份演示文稿<br>自然地说另一种语言','hero.lead':'先在本地识别图片、Logo 和重复素材，再由你确认处理方式与最高预算。只有锁定计划后，Translayer 才会开始执行。',
     'feature.format':'保留 PPTX 格式','feature.images':'翻译图片内文字','feature.local':'零成本本地筛选','feature.budget':'严格预算上限',
     'upload.title':'创建翻译任务','upload.supported':'目前支持 PPTX、DOCX 和 HTML','upload.drop':'拖放文件到这里，或点击选择','upload.privacy':'文件仅用于本次翻译任务','upload.start':'开始本地分析',
-    'field.source':'源语言','field.targets':'目标语言（可多选）','field.engine':'文本翻译引擎','field.ocr':'图片 OCR','engine.default':'默认引擎','engine.mock':'离线演示','ocr.tesseract':'Tesseract（本地）','ocr.paddle':'PaddleOCR（本地）',
+    'field.source':'源语言','field.targets':'目标语言（可多选）','field.engine':'文本翻译引擎','field.ocr':'图片 OCR','field.api_url':'API 基础地址','field.api_key':'API Key','field.model':'模型名称','engine.compatible':'OpenAI 兼容 API','engine.compatible_hint':'本地模型请填写其 /v1 基础地址；如果接口未启用鉴权，API Key 可以留空。','engine.deepl_hint':'自动识别 DeepL Free 和 Pro Key；Key 仅在本任务的服务端进程内使用。','engine.mock':'离线演示','ocr.tesseract':'Tesseract（本地）','ocr.paddle':'PaddleOCR（本地）','gemini.title':'可选：Gemini 图片文字翻译','gemini.note':'只有需要修改复杂图片里的文字时才需要填写 Gemini API Key；普通文档文字翻译不需要。','gemini.api_key':'Gemini API Key','gemini.api_key_required':'Gemini API Key（当前方案需要）','gemini.model':'Gemini 生图模型','gemini.estimate':'计费预测：每张修改图片约 {cost}。本地图片筛选完成后会计算总价；实际费用以服务商账单为准。','gemini.plan_estimate':'当前方案预计约 {total}：{count} 次图片调用 × 每次 {cost}。实际费用以服务商账单为准。',
     'processing.title':'正在分析文档','processing.note':'提取结构、字体和图片，不调用生图 API',
     'images.title':'图片审核','images.lead':'系统已给出保守建议。请处理所有待确认项并确认预算后继续。','images.accept':'将安全建议应用到待确认项',
     'metric.total':'图片总数','metric.total.note':'文档中的位图素材','metric.whole':'整图候选','metric.whole.note':'高置信度文字丰富图片','metric.pending':'待确认','metric.pending.note':'Logo、照片、界面或低置信度图片','metric.safe':'跳过 / 复用','metric.safe.note':'不产生图片 API 费用','metric.cost':'预计图片费用','metric.cost.note':'基于当前选择的方案',
@@ -393,7 +414,7 @@ function applyLocale(){
   else if(currentTextLang)document.getElementById('renderBtn').textContent=t('text.render_lang',{lang:currentTextLang.toUpperCase()});
   if(document.getElementById('confirmDialog').open)refreshConfirmSummary();
 }
-function setLocale(next){locale=next;localStorage.setItem('translayer.locale',next);applyLocale();}
+function setLocale(next){locale=next;localStorage.setItem('translayer.locale',next);applyLocale();syncProviderFields(false);renderGeminiCostPreview();}
 
 let jobId = null;
 let imagePlan = null;
@@ -406,6 +427,7 @@ let targetPosition = 0;
 let sharedImageActions = new Map();
 let currentTextLang = null;
 let allTargetsDone = false;
+let publicConfig={gemini_image_model:'gemini-3.1-flash-image',gemini_estimated_cost_per_image_usd:0.08,gemini_key_configured_on_server:false};
 
 const stateCopy = {
   queued:['state.queued.title','state.queued.note'], parsing:['state.parsing.title','state.parsing.note'],
@@ -427,6 +449,16 @@ function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&a
 function localizedReason(reason,fallbackKey) { return reason&&MESSAGES.en[`reason.${reason}`]?t(`reason.${reason}`):(reason||t(fallbackKey)); }
 function qualityReason(reason='') { const code=String(reason).split(':')[0];const key=`quality.reason.${code}`;return MESSAGES.en[key]?t(key):(reason||t('quality.failed')); }
 function money(value) { return '$' + Number(value || 0).toFixed(2); }
+function renderGeminiCostPreview(){
+  document.getElementById('geminiCostPreview').textContent=t('gemini.estimate',{cost:money(publicConfig.gemini_estimated_cost_per_image_usd)});
+}
+async function loadPublicConfiguration(){
+  try {
+    publicConfig=await api('/configuration');
+    const model=document.getElementById('geminiModel');if(!model.value)model.value=publicConfig.gemini_image_model;
+    renderGeminiCostPreview();
+  } catch(_error){renderGeminiCostPreview();}
+}
 function showToast(message, error=false) { const t=document.getElementById('toast'); t.textContent=message; t.className='toast show'+(error?' error':''); clearTimeout(t._timer); t._timer=setTimeout(()=>t.className='toast',3200); }
 function setStep(name) { const order=['upload','images','text','export']; const index=order.indexOf(name); document.querySelectorAll('.step').forEach((el,i)=>{el.classList.toggle('active',i===index);el.classList.toggle('done',i<index);}); }
 function showView(id) { ['uploadView','processingView','imageView','textView'].forEach(view=>document.getElementById(view).classList.toggle('hidden',view!==id)); document.getElementById('approvalBar').classList.toggle('hidden',id!=='imageView'); }
@@ -446,8 +478,31 @@ function syncTargets(){
 }
 document.getElementById('from').onchange=syncTargets;syncTargets();
 
+const providerValues={
+  openai:{url:'https://api.openai.com/v1',key:'',model:'gpt-4o-mini'},
+  deepl:{url:'',key:'',model:''}
+};
+let previousProvider='openai';
+function syncProviderFields(save=true){
+  const engine=document.getElementById('engine').value,config=document.getElementById('providerConfig');
+  const url=document.getElementById('translationApiUrl'),key=document.getElementById('translationApiKey'),model=document.getElementById('translationModel');
+  if(save&&providerValues[previousProvider])providerValues[previousProvider]={url:url.value,key:key.value,model:model.value};
+  config.classList.toggle('hidden',engine==='mock');
+  document.getElementById('modelField').classList.toggle('hidden',engine!=='openai');
+  document.getElementById('apiUrlField').classList.toggle('hidden',engine==='deepl');
+  if(engine!=='mock'&&engine!==previousProvider){const values=providerValues[engine];url.value=values.url;key.value=values.key;model.value=values.model;}
+  document.getElementById('providerHint').textContent=t(engine==='deepl'?'engine.deepl_hint':'engine.compatible_hint');
+  previousProvider=engine;
+}
+document.getElementById('engine').onchange=()=>syncProviderFields();syncProviderFields(false);
+loadPublicConfiguration();
+
 document.getElementById('startBtn').onclick=async()=>{
   const file=selectedFile||fileInput.files[0]; if(!file){showToast(t('error.choose_file'),true);return;}
+  const selectedEngine=document.getElementById('engine').value;
+  if(selectedEngine==='openai'&&!document.getElementById('translationApiUrl').value.trim()){showToast('API base URL is required',true);return;}
+  if(selectedEngine==='openai'&&!document.getElementById('translationModel').value.trim()){showToast('Model name is required',true);return;}
+  if(selectedEngine==='deepl'&&!document.getElementById('translationApiKey').value.trim()){showToast('DeepL API key is required',true);return;}
   targetQueue=[...document.querySelectorAll('#targetOptions input:checked')].map(input=>input.value);if(!targetQueue.length){showToast(t('error.choose_target'),true);return;}
   sourceFile=file;targetPosition=0;currentTextLang=null;allTargetsDone=false;sharedImageActions.clear();document.getElementById('renderBtn').disabled=false;document.getElementById('renderBtn').textContent=t('text.render');showView('processingView');await startNextTarget();
 };
@@ -457,6 +512,13 @@ async function startNextTarget(){
     selectedImages.clear();drawerImageId=null;document.getElementById('allowPaid').checked=false;document.getElementById('budget').dataset.touched='';
     const target=targetQueue[targetPosition],data=new FormData();data.append('file',sourceFile);data.append('source_lang',document.getElementById('from').value);data.append('target_lang',target);
     const engine=document.getElementById('engine').value,ocr=document.getElementById('ocr').value;if(engine)data.append('translation_engine',engine);if(ocr)data.append('ocr_engine',ocr);
+    if(engine!=='mock'){
+      data.append('translation_api_url',document.getElementById('translationApiUrl').value.trim());
+      data.append('translation_api_key',document.getElementById('translationApiKey').value.trim());
+      if(engine==='openai')data.append('translation_model',document.getElementById('translationModel').value.trim());
+    }
+    data.append('gemini_api_key',document.getElementById('geminiApiKey').value.trim());
+    data.append('gemini_model',document.getElementById('geminiModel').value.trim());
     document.getElementById('processingTitle').textContent=t('processing.preparing',{lang:target.toUpperCase()});
     document.getElementById('processingText').textContent=t('processing.progress',{position:targetPosition+1,total:targetQueue.length});
     const job=await api('/jobs',{method:'POST',body:data});jobId=job.id;poll();
@@ -485,7 +547,7 @@ async function loadImagePlan(){
 function renderImagePlan(){
   const s=imagePlan.summary, routes=s.routes||{}; document.getElementById('jobChip').textContent=t('job.label',{position:targetPosition+1,total:targetQueue.length,id:jobId,lang:imagePlan.target_lang.toUpperCase()});
   document.getElementById('mTotal').textContent=s.total_images;document.getElementById('mWhole').textContent=routes.whole_image||0;document.getElementById('mUnresolved').textContent=s.unresolved;document.getElementById('mSafe').textContent=(routes.skip||0)+(routes.reuse||0);
-  document.getElementById('mCost').textContent=money(s.estimated_total_cost_usd);document.getElementById('mCalls').textContent=t('calls.estimated',{count:s.planned_paid_calls});
+  document.getElementById('mCost').textContent=money(s.estimated_total_cost_usd);document.getElementById('mCalls').textContent=t('gemini.plan_estimate',{count:s.planned_paid_calls,cost:money(s.estimated_cost_per_call_usd),total:money(s.estimated_total_cost_usd)});
   document.getElementById('barUnresolved').textContent=s.unresolved;document.getElementById('barCost').textContent=money(s.estimated_total_cost_usd);document.getElementById('barCalls').textContent=t('calls.paid',{count:s.planned_paid_calls});
   const budget=document.getElementById('budget'); if(!budget.dataset.touched)budget.value=(Math.ceil(s.estimated_total_cost_usd*100)/100).toFixed(2);
   renderCards();updateApproval();updateBulkbar();
@@ -529,10 +591,10 @@ document.getElementById('closeDrawer').onclick=closeDrawer;document.getElementBy
 
 document.getElementById('budget').oninput=e=>{e.target.dataset.touched='1';updateApproval();};document.getElementById('allowPaid').onchange=updateApproval;
 function updateApproval(){if(!imagePlan)return;const s=imagePlan.summary,budget=Number(document.getElementById('budget').value||0),allowed=document.getElementById('allowPaid').checked;const ok=s.unresolved===0&&budget+1e-9>=s.estimated_total_cost_usd&&(s.planned_paid_calls===0||allowed);document.getElementById('lockPlan').disabled=!ok;}
-function refreshConfirmSummary(){if(!imagePlan)return;const s=imagePlan.summary;document.getElementById('confirmCalls').textContent=t('calls.value',{count:s.planned_paid_calls});document.getElementById('confirmCost').textContent=money(s.estimated_total_cost_usd);document.getElementById('confirmBudget').textContent=money(document.getElementById('budget').value);document.getElementById('confirmLang').textContent=imagePlan.target_lang.toUpperCase();}
+function refreshConfirmSummary(){if(!imagePlan)return;const s=imagePlan.summary;document.getElementById('confirmCalls').textContent=t('calls.value',{count:s.planned_paid_calls});document.getElementById('confirmCost').textContent=money(s.estimated_total_cost_usd);document.getElementById('confirmBudget').textContent=money(document.getElementById('budget').value);document.getElementById('confirmLang').textContent=imagePlan.target_lang.toUpperCase();const needsGemini=s.planned_paid_calls>0;document.getElementById('dialogGeminiConfig').classList.toggle('hidden',!needsGemini);document.getElementById('dialogGeminiApiKey').value=document.getElementById('geminiApiKey').value;document.getElementById('dialogGeminiModel').value=document.getElementById('geminiModel').value||publicConfig.gemini_image_model;document.getElementById('dialogGeminiEstimate').textContent=t('gemini.plan_estimate',{count:s.planned_paid_calls,cost:money(s.estimated_cost_per_call_usd),total:money(s.estimated_total_cost_usd)});}
 document.getElementById('lockPlan').onclick=()=>{refreshConfirmSummary();document.getElementById('confirmDialog').showModal();};
 document.getElementById('cancelConfirm').onclick=()=>document.getElementById('confirmDialog').close();
-document.getElementById('confirmPlan').onclick=async()=>{document.getElementById('confirmDialog').close();try{for(const item of imagePlan.images){if(item.decision?.action)sharedImageActions.set(item.image_id,item.decision.action);}await api(`/jobs/${jobId}/image-plan/approve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({allow_paid_api:document.getElementById('allowPaid').checked,max_budget_usd:Number(document.getElementById('budget').value||0)})});showView('processingView');poll();}catch(error){showToast(error.message,true);}};
+document.getElementById('confirmPlan').onclick=async()=>{try{const needsGemini=imagePlan.summary.planned_paid_calls>0,key=document.getElementById('dialogGeminiApiKey').value.trim(),model=document.getElementById('dialogGeminiModel').value.trim();if(needsGemini&&!key&&!publicConfig.gemini_key_configured_on_server){showToast(t('gemini.api_key_required'),true);return;}document.getElementById('geminiApiKey').value=key;document.getElementById('geminiModel').value=model;document.getElementById('confirmDialog').close();for(const item of imagePlan.images){if(item.decision?.action)sharedImageActions.set(item.image_id,item.decision.action);}await api(`/jobs/${jobId}/image-plan/approve`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({allow_paid_api:document.getElementById('allowPaid').checked,max_budget_usd:Number(document.getElementById('budget').value||0),gemini_api_key:key,gemini_model:model})});showView('processingView');poll();}catch(error){showToast(error.message,true);}};
 
 async function loadTextReview(){const ir=await api(`/jobs/${jobId}/ir`),rows=document.getElementById('textRows');currentTextLang=ir.meta.target_lang;document.getElementById('textJobChip').textContent=t('job.label',{position:targetPosition+1,total:targetQueue.length,id:jobId,lang:currentTextLang.toUpperCase()});document.getElementById('renderBtn').textContent=t('text.render_lang',{lang:currentTextLang.toUpperCase()});rows.innerHTML='';for(const block of ir.blocks){if(block.type==='image'||!block.source_text)continue;const tr=document.createElement('tr'),source=document.createElement('td'),target=document.createElement('td'),ta=document.createElement('textarea');source.textContent=block.source_text;ta.value=block.target_text||'';ta.onchange=()=>saveBlock(block.id,ta.value);target.appendChild(ta);tr.append(source,target);rows.appendChild(tr);}}
 async function saveBlock(id,text){try{await api(`/jobs/${jobId}/blocks/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({target_text:text})});showToast(t('toast.saved'));}catch(error){showToast(error.message,true);}}

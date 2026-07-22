@@ -31,6 +31,22 @@ def test_index_served():
     assert 'data-locale="de"' in r.text
     assert 'data-locale="zh"' in r.text
     assert "localStorage.getItem('translayer.locale')" in r.text
+    assert 'id="translationApiUrl"' in r.text
+    assert 'id="translationApiKey"' in r.text
+    assert 'id="translationModel"' in r.text
+    assert 'id="geminiApiKey"' in r.text
+    assert 'id="geminiCostPreview"' in r.text
+
+
+def test_public_configuration_exposes_cost_but_not_secrets(monkeypatch):
+    monkeypatch.setattr("translayer.api.app.settings.gemini_api_key", "server-secret")
+    response = client.get("/configuration")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["gemini_estimated_cost_per_image_usd"] > 0
+    assert payload["gemini_key_configured_on_server"] is True
+    assert "server-secret" not in response.text
 
 
 def test_full_job_flow(sample_pptx):
@@ -125,3 +141,36 @@ def test_rejects_same_or_unsupported_language(sample_pptx):
         )
     assert unsupported.status_code == 422
     assert "supported languages" in unsupported.json()["detail"]
+
+
+def test_rejects_invalid_translation_provider_configuration(sample_pptx, monkeypatch):
+    monkeypatch.setattr("translayer.api.app.settings.deepl_api_key", "")
+    with open(sample_pptx, "rb") as fh:
+        invalid_url = client.post(
+            "/jobs",
+            files={"file": ("sample.pptx", fh)},
+            data={
+                "source_lang": "en",
+                "target_lang": "de",
+                "translation_engine": "openai",
+                "translation_api_url": "llm.internal/v1",
+                "translation_model": "local-model",
+                "images": "false",
+            },
+        )
+    assert invalid_url.status_code == 422
+    assert "http:// or https://" in invalid_url.json()["detail"]
+
+    with open(sample_pptx, "rb") as fh:
+        missing_deepl_key = client.post(
+            "/jobs",
+            files={"file": ("sample.pptx", fh)},
+            data={
+                "source_lang": "en",
+                "target_lang": "de",
+                "translation_engine": "deepl",
+                "images": "false",
+            },
+        )
+    assert missing_deepl_key.status_code == 422
+    assert "DeepL API key" in missing_deepl_key.json()["detail"]

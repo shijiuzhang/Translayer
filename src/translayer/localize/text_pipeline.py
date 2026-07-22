@@ -12,12 +12,16 @@ from translayer.ir.models import DocumentIR
 from translayer.plugins import registry
 
 
-def localize_text(ir: DocumentIR, engine_name: str = "openai") -> DocumentIR:
+def localize_text(
+    ir: DocumentIR,
+    engine_name: str = "openai",
+    engine_options: dict | None = None,
+) -> DocumentIR:
     groups = group_by_slide(ir)
     if not groups:
         return ir
 
-    engine = registry.get("translation", engine_name)
+    engine = registry.get("translation", engine_name, **(engine_options or {}))
     src, tgt = ir.meta.source_lang, ir.meta.target_lang
 
     for _slide, blocks in groups.items():

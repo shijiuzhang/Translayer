@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import io
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -40,6 +41,7 @@ def test_gemini_localizes_and_restores_original_size(tmp_path) -> None:
         client=client,
         cost_guard=ImageAPICostGuard(enabled=True, max_calls=1, max_cost_usd=0.10),
         cache_dir=str(tmp_path / "cache"),
+        model="custom-gemini-image-model",
     )
 
     mappings = [("The Trap", "Die Falle")]
@@ -47,7 +49,7 @@ def test_gemini_localizes_and_restores_original_size(tmp_path) -> None:
         str(source), str(output), "en", "de", text_mappings=mappings
     ) == str(output)
     assert Image.open(output).size == (320, 180)
-    assert interactions.kwargs["model"] == settings.gemini_image_model
+    assert interactions.kwargs["model"] == "custom-gemini-image-model"
     assert interactions.kwargs["response_format"]["mime_type"] == "image/jpeg"
     prompt = interactions.kwargs["input"][1]["text"]
     assert "German (de-DE)" in prompt
@@ -70,6 +72,19 @@ def test_gemini_requires_api_key(monkeypatch, tmp_path) -> None:
         ).localize(
             str(source), str(tmp_path / "out.png"), "en", "zh"
         )
+
+
+def test_gemini_uses_task_scoped_api_key(monkeypatch) -> None:
+    captured = {}
+    fake_genai = SimpleNamespace(
+        Client=lambda **kwargs: captured.update(kwargs) or SimpleNamespace()
+    )
+    monkeypatch.setitem(sys.modules, "google", SimpleNamespace(genai=fake_genai))
+
+    engine = GeminiImageLocalizationEngine(api_key="job-secret")
+    engine._create_client()
+
+    assert captured == {"api_key": "job-secret"}
 
 
 def test_gemini_finds_final_image_in_model_output_steps(tmp_path) -> None:

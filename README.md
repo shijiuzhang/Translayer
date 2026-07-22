@@ -1,4 +1,6 @@
-# Translayer (v0.2.0)
+# Translayer (v0.2.1)
+
+English | [简体中文](README.zh-CN.md) | [Deutsch](README.de.md)
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
@@ -82,7 +84,7 @@ graph TD
 
 ---
 
-## ✨ Key Features (v0.2.0 Updates)
+## ✨ Key Features (v0.2.1)
 
 * **🌐 Multilingual & Font-Aware OCR**: Full support for English, Chinese, and German as source/target languages. Automatically provisions language-specific OCR engines (e.g. Tesseract langpacks) and selects proper rendering fonts.
 * **⚡ Human-in-the-Loop Image Screening**: Uses local, zero-API Tesseract TSV probes (`--psm 11`) to analyze images for text density, line count, and OCR confidence. Separates text-heavy graphics from simple labels, lets users manually select images for AI translation in the review UI, and filters out system icons.
@@ -91,6 +93,8 @@ graph TD
   - **Post-Gen**: Re-OCRs the Gemini-generated image. If it detects un-erased source text (residual leftovers) or missing target translations, it invalidates the cache and returns the job to manual review.
 * **💰 Cost Guard System**: Configurable per-job cost limits, estimated provider costs, and a budget gate to prevent runaway API fees.
 * **🖥️ Trilingual Web Interface**: Single-page, modern layout (defaults to English, supports Chinese and German) featuring document upload, advanced settings, cost estimation, image review panels, live progress monitoring, and output download.
+* **🔑 Task-scoped Provider Credentials**: Users can configure any OpenAI-compatible translation endpoint, DeepL, and optional Gemini image editing directly in the web UI. Secrets stay in the in-memory job and are never returned by public job APIs.
+* **💵 Visible Image Cost Forecasts**: The UI shows the configured per-image planning rate, projected paid calls, estimated total, and a hard approval budget before Gemini image editing starts.
 * **🐳 Production Docker Container**: Fully-packaged image featuring LibreOffice, Poppler, Tesseract (with eng, chi_sim, deu packs), Python 3.11, and multilingual fonts.
 
 ---
@@ -223,11 +227,18 @@ Translate any `.pptx`, `.docx`, or `.html` document.
 translayer translate input.pptx -o output.pptx \
   --from en \
   --to zh \
-  --engine gemini \
+  --engine openai \
+  --api-url http://llm.internal:8000/v1 \
+  --api-key optional-local-key \
+  --model my-local-model \
   --ocr-engine tesseract \
   --glossary my_terms.csv
 ```
 *Options:*
+* `--engine openai`: Use any OpenAI-compatible Chat Completions API. Set
+  `--api-url`, `--model`, and, when the server requires authentication, `--api-key`.
+* `--engine deepl --api-key ...`: Use DeepL API Free or Pro; the endpoint is selected
+  automatically from the key. `--api-url` can override the DeepL base URL.
 * `--no-images`: Skip in-image text translation entirely.
 * `--no-image-screening`: Force API translation for all images without screening (not recommended, increases cost).
 
@@ -254,6 +265,12 @@ translayer plan-images input.pptx -o cost_plan.json \
 ```bash
 translayer serve --host 127.0.0.1 --port 8000
 ```
+
+The job form accepts task-scoped credentials for OpenAI-compatible translation,
+DeepL, and optional Gemini image-text localization. A Gemini API key is needed only
+when the approved image plan contains paid whole-image edits. The UI shows the
+configured per-image planning estimate and the projected total before approval;
+actual provider billing may differ from this safety estimate.
 
 ---
 

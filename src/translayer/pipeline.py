@@ -82,6 +82,7 @@ def translate_document(
     images: bool = True,
     screen_images: bool | None = None,
     asset_dir: str | None = None,
+    translation_options: dict | None = None,
 ) -> DocumentIR:
     """End-to-end: parse -> enrich -> localize -> render."""
     ir = parse_document(input_path, source_lang, target_lang, glossary, asset_dir)
@@ -91,7 +92,12 @@ def translate_document(
         ocr_engine=ocr_engine,
         screen_images=screen_images,
     )
-    localize(ir, translation_engine=translation_engine,
-             inpaint_engine=inpaint_engine, images=images)
+    localize(
+        ir,
+        translation_engine=translation_engine,
+        inpaint_engine=inpaint_engine,
+        images=images,
+        translation_options=translation_options,
+    )
     render_document(ir, input_path, output_path)
     return ir

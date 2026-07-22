@@ -24,6 +24,7 @@ from translayer.api.schemas import (
     ImageDecisionEdit,
     RegionEdit,
 )
+from translayer.config import settings
 from translayer.engines.image.cost_guard import ImageAPICostGuard
 from translayer.enrich.image_text import ImageTextEnricher
 from translayer.languages import normalize_language
@@ -37,7 +38,7 @@ from translayer.localize.whole_image_quality import (
 from translayer.pipeline import enrich_document, parse_document, render_document
 from translayer.plugins import registry
 
-app = FastAPI(title="Translayer", version="0.1.0")
+app = FastAPI(title="Translayer", version="0.2.1")
 store = JobStore()
 
 _WEB_DIR = os.path.join(os.path.dirname(__file__), "..", "web")
@@ -55,7 +56,11 @@ def _process(job: Job) -> None:
         enrich_document(ir, images=job.images, ocr_engine=job.ocr_engine)
         job.initialize_image_decisions()
         job.state = "localizing_text"
-        localize_text(ir, engine_name=job.translation_engine)
+        localize_text(
+            ir,
+            engine_name=job.translation_engine,
+            engine_options=job.translation_options,
+        )
         job.state = "image_review" if job.images and ir.resources.images else "review"
     except Exception as exc:  # noqa: BLE001 - surface failures to the client
         job.state = "error"
@@ -69,12 +74,27 @@ def index() -> str:
         return fh.read()
 
 
+@app.get("/configuration")
+def public_configuration():
+    """Return non-secret defaults used by the browser's cost preview."""
+    return {
+        "gemini_image_model": settings.gemini_image_model,
+        "gemini_estimated_cost_per_image_usd": settings.gemini_image_estimated_cost_usd,
+        "gemini_key_configured_on_server": bool(settings.gemini_api_key),
+    }
+
+
 @app.post("/jobs")
 async def create_job(
     file: UploadFile = File(...),
     source_lang: str = Form("en"),
     target_lang: str = Form("zh"),
     translation_engine: str | None = Form(None),
+    translation_api_url: str | None = Form(None),
+    translation_api_key: str | None = Form(None),
+    translation_model: str | None = Form(None),
+    gemini_api_key: str | None = Form(None),
+    gemini_model: str | None = Form(None),
     ocr_engine: str | None = Form(None),
     inpaint_engine: str | None = Form(None),
     images: bool = Form(True),
@@ -86,10 +106,40 @@ async def create_job(
         raise HTTPException(422, str(exc)) from exc
     if source_lang == target_lang:
         raise HTTPException(422, "source and target languages must be different")
+    selected_engine = translation_engine or settings.translation_engine
+    if selected_engine not in {"openai", "deepl", "mock"}:
+        raise HTTPException(422, "unsupported translation engine")
+    translation_options: dict[str, str] = {}
+    if selected_engine == "openai":
+        if translation_api_url:
+            translation_options["base_url"] = translation_api_url
+        if translation_api_key is not None:
+            translation_options["api_key"] = translation_api_key
+        if translation_model:
+            translation_options["model"] = translation_model
+        if not (translation_model or settings.openai_model):
+            raise HTTPException(422, "model name is required for an OpenAI-compatible engine")
+    elif selected_engine == "deepl":
+        if translation_api_key:
+            translation_options["api_key"] = translation_api_key
+        if translation_api_url:
+            translation_options["base_url"] = translation_api_url
+        if not (translation_api_key or settings.deepl_api_key):
+            raise HTTPException(422, "DeepL API key is required")
+    try:
+        registry.discover()
+        registry.get("translation", selected_engine, **translation_options)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+
     data = await file.read()
     job = store.create(
         data, file.filename or "input.pptx", source_lang, target_lang,
-        translation_engine=translation_engine, ocr_engine=ocr_engine,
+        translation_engine=selected_engine,
+        translation_options=translation_options,
+        gemini_api_key=gemini_api_key,
+        gemini_model=gemini_model,
+        ocr_engine=ocr_engine,
         inpaint_engine=inpaint_engine, images=images,
     )
     threading.Thread(target=_process, args=(job,), daemon=True).start()
@@ -336,7 +386,13 @@ def _continue_after_image_review(
                 estimated_cost_per_call_usd=job.estimated_image_cost_usd,
             )
             registry.discover()
-            engine = registry.get("image_localization", "gemini", cost_guard=guard)
+            engine = registry.get(
+                "image_localization",
+                "gemini",
+                cost_guard=guard,
+                api_key=job.gemini_api_key or None,
+                model=job.gemini_model,
+            )
             output_dir = os.path.join(job.work_dir, "localized-images", job.target_lang)
             os.makedirs(output_dir, exist_ok=True)
             quality_failures = []
@@ -361,6 +417,7 @@ def _continue_after_image_review(
                         translation_engine=job.translation_engine,
                         source_lang=job.source_lang,
                         target_lang=job.target_lang,
+                        translation_options=job.translation_options,
                     )
                     engine.localize(
                         image.data_ref,
@@ -412,6 +469,7 @@ def _continue_after_image_review(
             ir,
             translation_engine=job.translation_engine,
             inpaint_engine=job.inpaint_engine,
+            translation_options=job.translation_options,
         )
         for image in ir.resources.images:
             decision = job.image_decisions[image.id]
@@ -440,6 +498,15 @@ def approve_image_plan(job_id: str, approval: ApproveImagePlan):
         )
     if job.planned_paid_calls() and not approval.allow_paid_api:
         raise HTTPException(409, "paid image calls are not explicitly enabled")
+    if approval.gemini_api_key is not None:
+        job.gemini_api_key = approval.gemini_api_key.strip()
+    if approval.gemini_model:
+        job.gemini_model = approval.gemini_model.strip()
+    if job.planned_paid_calls() and not (job.gemini_api_key or settings.gemini_api_key):
+        raise HTTPException(
+            409,
+            "Gemini API key is required only because the plan modifies text inside images",
+        )
     job.image_plan_locked = True
     job.image_budget_usd = approval.max_budget_usd
     job.state = "localizing_images"

@@ -29,8 +29,14 @@ class GeminiImageLocalizationEngine:
         client: Any | None = None,
         cost_guard: ImageAPICostGuard | None = None,
         cache_dir: str | None = None,
+        api_key: str | None = None,
+        model: str | None = None,
     ):
         self._client = client
+        self._api_key = settings.gemini_api_key if api_key is None else api_key.strip()
+        self._model = (model or settings.gemini_image_model).strip()
+        if not self._model:
+            raise ValueError("Gemini image model name is required")
         self._cost_guard = cost_guard or ImageAPICostGuard(
             enabled=settings.gemini_image_api_enabled,
             max_calls=settings.gemini_image_max_calls,
@@ -67,7 +73,7 @@ class GeminiImageLocalizationEngine:
         self._cost_guard.reserve()
         client = self._client or self._create_client()
         interaction = client.interactions.create(
-            model=settings.gemini_image_model,
+            model=self._model,
             input=[
                 {
                     "type": "image",
@@ -109,7 +115,7 @@ class GeminiImageLocalizationEngine:
     ) -> str:
         digest = hashlib.sha256()
         digest.update(image_bytes)
-        digest.update(settings.gemini_image_model.encode("utf-8"))
+        digest.update(self._model.encode("utf-8"))
         digest.update(src.lower().encode("utf-8"))
         digest.update(tgt.lower().encode("utf-8"))
         digest.update(_PROMPT_VERSION.encode("utf-8"))
@@ -175,7 +181,7 @@ plate, callout container, or any new graphic element. Text that was printed dire
 background must remain printed directly on that background. Return only the edited image."""
 
     def _create_client(self) -> Any:
-        if not settings.gemini_api_key:
+        if not self._api_key:
             raise RuntimeError(
                 "Gemini image localization requires GEMINI_API_KEY (or GOOGLE_API_KEY)"
             )
@@ -186,7 +192,7 @@ background must remain printed directly on that background. Return only the edit
                 "Gemini image localization is optional. Install it with "
                 "`pip install 'translayer[gemini]'`."
             ) from exc
-        return genai.Client(api_key=settings.gemini_api_key)
+        return genai.Client(api_key=self._api_key)
 
 
 def _mime_type(path: str) -> str:

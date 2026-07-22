@@ -27,6 +27,7 @@ def prepare_text_mappings(
     translation_engine: str,
     source_lang: str,
     target_lang: str,
+    translation_options: dict | None = None,
 ) -> list[tuple[str, str]]:
     """Translate every OCR region first and return an explicit source/target map."""
 
@@ -44,7 +45,9 @@ def prepare_text_mappings(
             f"{image.id}: whole-image translation blocked because pre-generation OCR found no text"
         )
 
-    translator = registry.get("translation", translation_engine)
+    translator = registry.get(
+        "translation", translation_engine, **(translation_options or {})
+    )
     source_texts = [region.source_text.strip() for region in regions]
     translations = translator.translate(
         source_texts,

@@ -12,6 +12,7 @@ import tempfile
 import threading
 import uuid
 from dataclasses import dataclass, field
+from typing import Any
 
 from translayer.config import settings
 from translayer.ir.models import DocumentIR
@@ -53,6 +54,9 @@ class Job:
     translation_engine: str
     ocr_engine: str
     inpaint_engine: str
+    translation_options: dict[str, str] = field(default_factory=dict, repr=False)
+    gemini_api_key: str = field(default="", repr=False)
+    gemini_model: str = ""
     images: bool = True
     state: str = "queued"
     error: str | None = None
@@ -62,7 +66,9 @@ class Job:
     image_decisions: dict[str, ImageDecision] = field(default_factory=dict)
     image_plan_locked: bool = False
     image_budget_usd: float = 0.0
-    estimated_image_cost_usd: float = 0.077
+    estimated_image_cost_usd: float = field(
+        default_factory=lambda: settings.gemini_image_estimated_cost_usd
+    )
     paid_image_calls: int = 0
     slide_preview_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
@@ -128,7 +134,7 @@ class JobStore:
         self._lock = threading.Lock()
 
     def create(self, upload_bytes: bytes, filename: str, source_lang: str,
-               target_lang: str, **engines: str) -> Job:
+               target_lang: str, **engines: Any) -> Job:
         job_id = uuid.uuid4().hex[:12]
         work_dir = tempfile.mkdtemp(prefix=f"job_{job_id}_", dir=self.root)
         ext = os.path.splitext(filename)[1] or ".pptx"
@@ -141,6 +147,9 @@ class JobStore:
             source_lang=source_lang,
             target_lang=target_lang,
             translation_engine=engines.get("translation_engine") or settings.translation_engine,
+            translation_options=engines.get("translation_options") or {},
+            gemini_api_key=engines.get("gemini_api_key") or "",
+            gemini_model=engines.get("gemini_model") or settings.gemini_image_model,
             ocr_engine=engines.get("ocr_engine") or settings.ocr_engine,
             inpaint_engine=engines.get("inpaint_engine") or settings.inpaint_engine,
             images=engines.get("images", True),
