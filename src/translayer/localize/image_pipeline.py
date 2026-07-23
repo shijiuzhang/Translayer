@@ -11,6 +11,7 @@ A VLM self-check hook is stubbed for a future quality loop.
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 
 from PIL import Image
 
@@ -29,6 +30,7 @@ def localize_images(
     translation_engine: str = "openai",
     inpaint_engine: str = "pillow",
     translation_options: dict | None = None,
+    progress_callback: Callable[[str, ImageResource], None] | None = None,
 ) -> DocumentIR:
     images = [
         image
@@ -47,16 +49,33 @@ def localize_images(
     src, tgt = ir.meta.source_lang, ir.meta.target_lang
 
     for image in images:
-        _localize_one(image, translator, inpainter, src, tgt)
+        _localize_one(
+            image,
+            translator,
+            inpainter,
+            src,
+            tgt,
+            progress_callback=progress_callback,
+        )
     return ir
 
 
-def _localize_one(image: ImageResource, translator, inpainter, src: str, tgt: str) -> None:
+def _localize_one(
+    image: ImageResource,
+    translator,
+    inpainter,
+    src: str,
+    tgt: str,
+    *,
+    progress_callback: Callable[[str, ImageResource], None] | None = None,
+) -> None:
     regions = [r for r in image.text_regions if r.translatable and r.source_text.strip()]
     if not regions:
         return
 
     # 1. Translate region texts together (shared image context).
+    if progress_callback:
+        progress_callback("translating", image)
     texts = [r.source_text for r in regions]
     context = " / ".join(texts)
     max_chars = [None] * len(texts)
@@ -67,11 +86,15 @@ def _localize_one(image: ImageResource, translator, inpainter, src: str, tgt: st
         region.target_text = translated
 
     # 2. Erase original text.
+    if progress_callback:
+        progress_callback("inpainting", image)
     base, ext = os.path.splitext(image.data_ref)
     erased_path = f"{base}.erased{ext or '.png'}"
     inpainter.erase(image.data_ref, regions, erased_path)
 
     # 3. Redraw translations with a real font sized to fit each region.
+    if progress_callback:
+        progress_callback("redrawing", image)
     img = Image.open(erased_path).convert("RGB")
     for region in regions:
         font_layout.render_text_in_box(img, region, lang=tgt)
@@ -80,3 +103,5 @@ def _localize_one(image: ImageResource, translator, inpainter, src: str, tgt: st
     out_path = f"{base}.localized{ext or '.png'}"
     img.save(out_path)
     image.localized_data_ref = out_path
+    if progress_callback:
+        progress_callback("completed", image)

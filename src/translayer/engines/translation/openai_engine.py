@@ -58,8 +58,11 @@ class OpenAIEngine(BaseTranslationEngine):
                 },
                 {"role": "user", "content": prompt},
             ],
-            "temperature": 0,
         }
+        if self._is_moonshot_kimi_reasoning_model():
+            payload["thinking"] = {"type": "disabled"}
+        else:
+            payload["temperature"] = 0
         endpoint = (
             self.base_url
             if self.base_url.endswith("/chat/completions")
@@ -69,7 +72,12 @@ class OpenAIEngine(BaseTranslationEngine):
 
         with httpx.Client(timeout=60) as client:
             response = client.post(endpoint, json=payload, headers=headers)
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                detail = response.text.strip()
+                message = f"{exc} Response body: {detail}" if detail else str(exc)
+                raise RuntimeError(message) from exc
             data = response.json()
 
         content = data["choices"][0]["message"].get("content", "")
@@ -77,3 +85,8 @@ class OpenAIEngine(BaseTranslationEngine):
         parsed = self.parse_json_array_response(content, len(texts), fallback)
         parsed = self.apply_glossary_to_many(parsed, glossary)
         return self.enforce_max_chars(parsed, max_chars)
+
+    def _is_moonshot_kimi_reasoning_model(self) -> bool:
+        base_url = self.base_url.lower()
+        model = self.model.lower()
+        return "moonshot." in base_url and model.startswith(("kimi-k2.5", "kimi-k2.6"))

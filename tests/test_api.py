@@ -36,6 +36,8 @@ def test_index_served():
     assert 'id="translationModel"' in r.text
     assert 'id="geminiApiKey"' in r.text
     assert 'id="geminiCostPreview"' in r.text
+    assert 'id="progressPanel"' in r.text
+    assert 'role="progressbar"' in r.text
 
 
 def test_public_configuration_exposes_cost_but_not_secrets(monkeypatch):
@@ -64,6 +66,11 @@ def test_full_job_flow(sample_pptx):
 
     job = _wait_state(job_id, ("image_review",))
     assert job["state"] == "image_review", job
+    assert job["progress"]["text"]["completed"] == job["progress"]["text"]["total"]
+    assert (
+        job["progress"]["text"]["completed_items"]
+        == job["progress"]["text"]["total_items"]
+    )
 
     plan = client.get(f"/jobs/{job_id}/image-plan")
     assert plan.status_code == 200
@@ -102,6 +109,8 @@ def test_full_job_flow(sample_pptx):
     job = _wait_state(job_id, ("review",))
     assert job["state"] == "review", job
     assert job["blocks"] > 0
+    assert job["progress"]["images"]["completed"] == job["progress"]["images"]["total"]
+    assert job["progress"]["images"]["stage"] == "completed"
 
     ir = client.get(f"/jobs/{job_id}/ir").json()
     first = next(b for b in ir["blocks"] if b["type"] != "image" and b["source_text"])

@@ -115,6 +115,28 @@ def test_openai_compatible_engine_allows_authless_local_api(monkeypatch):
     assert calls[0][1]["headers"] == {}
 
 
+def test_openai_compatible_engine_adapts_moonshot_kimi_reasoning_model(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "translayer.engines.translation.openai_engine.httpx.Client",
+        lambda **kwargs: _FakeClient(
+            {"choices": [{"message": {"content": '["Hallo"]'}}]}, calls, **kwargs
+        ),
+    )
+    engine = registry.get(
+        "translation",
+        "openai",
+        base_url="https://api.moonshot.cn/v1",
+        api_key="moonshot-key",
+        model="kimi-k2.6",
+    )
+
+    assert engine.translate(["你好"], "zh", "de") == ["Hallo"]
+    request_json = calls[0][1]["json"]
+    assert "temperature" not in request_json
+    assert request_json["thinking"] == {"type": "disabled"}
+
+
 def test_deepl_engine_uses_current_json_and_header_format(monkeypatch):
     calls = []
     monkeypatch.setattr(

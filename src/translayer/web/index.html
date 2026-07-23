@@ -84,10 +84,17 @@
   .btn-block { width:100%; }
 
   .processing { background:#fff; border:1px solid var(--line); border-radius:22px; min-height:460px; display:grid; place-items:center; text-align:center; box-shadow:var(--shadow); }
+  .processing-content { width:min(560px,calc(100% - 40px)); }
   .orbit { width:72px; height:72px; border-radius:50%; border:3px solid #e4edfb; border-top-color:var(--blue); animation:spin 1s linear infinite; margin:0 auto 20px; }
   @keyframes spin { to { transform:rotate(360deg); } }
   .processing h2 { margin:0 0 8px; font-size:22px; }
   .processing p { margin:0; color:var(--muted); }
+  .progress-panel { margin-top:28px; text-align:left; }
+  .progress-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:9px; color:#344054; font-size:12px; font-weight:750; }
+  .progress-head strong { color:var(--blue); font-size:13px; }
+  .progress-track { height:10px; overflow:hidden; border-radius:6px; background:#e7edf6; box-shadow:inset 0 1px 2px rgba(31,48,76,.08); }
+  .progress-fill { display:block; width:0; height:100%; border-radius:6px; background:linear-gradient(90deg,var(--blue),var(--cyan)); transition:width .25s ease; }
+  .progress-meta { min-height:18px; margin-top:9px; color:var(--muted); font-size:11px; line-height:1.5; }
 
   .page-head { display:flex; justify-content:space-between; align-items:flex-end; gap:22px; margin-bottom:20px; }
   .page-head h2 { font-size:28px; margin:0 0 6px; letter-spacing:-.6px; }
@@ -282,7 +289,7 @@
     </div>
   </section>
 
-  <section id="processingView" class="processing hidden"><div><div class="orbit"></div><h2 id="processingTitle" data-i18n="processing.title">Analyzing document</h2><p id="processingText" data-i18n="processing.note">Extracting structure, fonts and images without calling an image-generation API</p></div></section>
+  <section id="processingView" class="processing hidden"><div class="processing-content"><div class="orbit"></div><h2 id="processingTitle" data-i18n="processing.title">Analyzing document</h2><p id="processingText" data-i18n="processing.note">Extracting structure, fonts and images without calling an image-generation API</p><div id="progressPanel" class="progress-panel hidden"><div class="progress-head"><span id="progressLabel"></span><strong id="progressPercent">0%</strong></div><div id="progressTrack" class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="progressFill" class="progress-fill"></i></div><div id="progressMeta" class="progress-meta"></div></div></div></section>
 
   <section id="imageView" class="hidden">
     <div class="page-head"><div><h2 data-i18n="images.title">Image review</h2><p data-i18n="images.lead">The system has made conservative recommendations. Resolve every pending item and confirm the budget to continue.</p></div><div class="job-chip" id="jobChip"></div></div>
@@ -332,7 +339,7 @@ const MESSAGES = {
     'feature.format':'Preserve PPTX formatting','feature.images':'Translate text in images','feature.local':'Zero-cost local screening','feature.budget':'Hard budget limit',
     'upload.title':'Create translation job','upload.supported':'Currently supports PPTX, DOCX and HTML','upload.drop':'Drop a file here or click to choose','upload.privacy':'The file is used only for this translation job','upload.start':'Start local analysis',
     'field.source':'Source language','field.targets':'Target languages (multiple allowed)','field.engine':'Text engine','field.ocr':'Image OCR','field.api_url':'API base URL','field.api_key':'API key','field.model':'Model name','engine.compatible':'OpenAI-compatible API','engine.compatible_hint':'For a local API, enter its /v1 base URL. The API key may be left blank if authentication is disabled.','engine.deepl_hint':'DeepL Free and Pro keys are detected automatically. The key stays in this server process for this job only.','engine.mock':'Offline demo','ocr.tesseract':'Tesseract (local)','ocr.paddle':'PaddleOCR (local)','gemini.title':'Optional: Gemini image-text translation','gemini.note':'Only enter a Gemini API key if you want Translayer to modify text inside complex images. It is not needed for normal document text translation.','gemini.api_key':'Gemini API Key','gemini.api_key_required':'Gemini API Key (required for this plan)','gemini.model':'Gemini image model','gemini.estimate':'Planning estimate: about {cost} per modified image. The total is calculated after local image screening; actual provider billing may differ.','gemini.plan_estimate':'This plan may cost about {total}: {count} image calls × {cost}. Actual provider billing may differ.',
-    'processing.title':'Analyzing document','processing.note':'Extracting structure, fonts and images without calling an image-generation API',
+    'processing.title':'Analyzing document','processing.note':'Extracting structure, fonts and images without calling an image-generation API','progress.text.label':'Text translation','progress.text.meta':'Slide {current} · {completed}/{total} slides · {items}/{itemTotal} text blocks','progress.images.label':'Image processing','progress.images.meta':'{completed}/{total} images · {stage}','progress.stage.preparing':'Preparing the plan','progress.stage.ocr':'Running OCR','progress.stage.translating':'Translating text','progress.stage.generating':'Generating image','progress.stage.validating':'Checking quality','progress.stage.inpainting':'Removing source text','progress.stage.redrawing':'Drawing translated text','progress.stage.reusing':'Reusing an existing result','progress.stage.preserved':'Keeping original image','progress.stage.failed':'Quality check failed','progress.stage.completed':'Completed',
     'images.title':'Image review','images.lead':'The system has made conservative recommendations. Resolve every pending item and confirm the budget to continue.','images.accept':'Apply safe recommendation to pending items',
     'metric.total':'Total images','metric.total.note':'Bitmap assets in this document','metric.whole':'Whole-image candidates','metric.whole.note':'High-confidence text-rich images','metric.pending':'Awaiting confirmation','metric.pending.note':'Logos, photos, UI or low confidence','metric.safe':'Skip / reuse','metric.safe.note':'No image API charges','metric.cost':'Estimated image cost','metric.cost.note':'Based on the selected plan',
     'filter.all':'All','route.review':'Pending','route.whole_image':'Whole image','route.skip':'Keep','route.region':'Local OCR','route.reuse':'Duplicate','search.placeholder':'Search slide, text or image ID',
@@ -356,7 +363,7 @@ const MESSAGES = {
     'feature.format':'PPTX-Format bewahren','feature.images':'Text in Bildern übersetzen','feature.local':'Kostenlose lokale Prüfung','feature.budget':'Feste Budgetgrenze',
     'upload.title':'Übersetzungsauftrag erstellen','upload.supported':'Unterstützt derzeit PPTX, DOCX und HTML','upload.drop':'Datei hier ablegen oder zum Auswählen klicken','upload.privacy':'Die Datei wird nur für diesen Übersetzungsauftrag verwendet','upload.start':'Lokale Analyse starten',
     'field.source':'Ausgangssprache','field.targets':'Zielsprachen (Mehrfachauswahl)','field.engine':'Text-Engine','field.ocr':'Bild-OCR','field.api_url':'API-Basis-URL','field.api_key':'API-Schlüssel','field.model':'Modellname','engine.compatible':'OpenAI-kompatible API','engine.compatible_hint':'Für eine lokale API die /v1-Basis-URL eingeben. Ohne Authentifizierung kann der API-Schlüssel leer bleiben.','engine.deepl_hint':'DeepL Free- und Pro-Schlüssel werden automatisch erkannt. Der Schlüssel bleibt nur für diesen Auftrag im Serverprozess.','engine.mock':'Offline-Demo','ocr.tesseract':'Tesseract (lokal)','ocr.paddle':'PaddleOCR (lokal)','gemini.title':'Optional: Gemini-Bildtextübersetzung','gemini.note':'Geben Sie einen Gemini-API-Schlüssel nur ein, wenn Translayer Text in komplexen Bildern ändern soll. Für normalen Dokumenttext ist er nicht erforderlich.','gemini.api_key':'Gemini-API-Schlüssel','gemini.api_key_required':'Gemini-API-Schlüssel (für diesen Plan erforderlich)','gemini.model':'Gemini-Bildmodell','gemini.estimate':'Planungsschätzung: etwa {cost} pro geändertem Bild. Die Gesamtsumme wird nach der lokalen Bildprüfung berechnet; die tatsächliche Abrechnung kann abweichen.','gemini.plan_estimate':'Dieser Plan kann etwa {total} kosten: {count} Bildaufrufe × {cost}. Die tatsächliche Abrechnung kann abweichen.',
-    'processing.title':'Dokument wird analysiert','processing.note':'Struktur, Schriften und Bilder werden ohne Bildgenerierungs-API extrahiert',
+    'processing.title':'Dokument wird analysiert','processing.note':'Struktur, Schriften und Bilder werden ohne Bildgenerierungs-API extrahiert','progress.text.label':'Textübersetzung','progress.text.meta':'Folie {current} · {completed}/{total} Folien · {items}/{itemTotal} Textblöcke','progress.images.label':'Bildverarbeitung','progress.images.meta':'{completed}/{total} Bilder · {stage}','progress.stage.preparing':'Plan wird vorbereitet','progress.stage.ocr':'OCR wird ausgeführt','progress.stage.translating':'Text wird übersetzt','progress.stage.generating':'Bild wird erzeugt','progress.stage.validating':'Qualität wird geprüft','progress.stage.inpainting':'Ausgangstext wird entfernt','progress.stage.redrawing':'Übersetzung wird eingezeichnet','progress.stage.reusing':'Vorhandenes Ergebnis wird wiederverwendet','progress.stage.preserved':'Originalbild wird beibehalten','progress.stage.failed':'Qualitätsprüfung fehlgeschlagen','progress.stage.completed':'Abgeschlossen',
     'images.title':'Bildprüfung','images.lead':'Das System hat vorsichtige Empfehlungen erstellt. Klären Sie alle offenen Elemente und bestätigen Sie das Budget.','images.accept':'Sichere Empfehlung auf offene Elemente anwenden',
     'metric.total':'Bilder gesamt','metric.total.note':'Bitmap-Grafiken in diesem Dokument','metric.whole':'Ganzbild-Kandidaten','metric.whole.note':'Textreiche Bilder mit hoher Sicherheit','metric.pending':'Bestätigung ausstehend','metric.pending.note':'Logos, Fotos, UI oder geringe Sicherheit','metric.safe':'Überspringen / wiederverwenden','metric.safe.note':'Keine Kosten für Bild-APIs','metric.cost':'Geschätzte Bildkosten','metric.cost.note':'Auf Basis des gewählten Plans',
     'filter.all':'Alle','route.review':'Offen','route.whole_image':'Ganzbild','route.skip':'Beibehalten','route.region':'Lokale OCR','route.reuse':'Duplikat','search.placeholder':'Folie, Text oder Bild-ID suchen',
@@ -380,7 +387,7 @@ const MESSAGES = {
     'feature.format':'保留 PPTX 格式','feature.images':'翻译图片内文字','feature.local':'零成本本地筛选','feature.budget':'严格预算上限',
     'upload.title':'创建翻译任务','upload.supported':'目前支持 PPTX、DOCX 和 HTML','upload.drop':'拖放文件到这里，或点击选择','upload.privacy':'文件仅用于本次翻译任务','upload.start':'开始本地分析',
     'field.source':'源语言','field.targets':'目标语言（可多选）','field.engine':'文本翻译引擎','field.ocr':'图片 OCR','field.api_url':'API 基础地址','field.api_key':'API Key','field.model':'模型名称','engine.compatible':'OpenAI 兼容 API','engine.compatible_hint':'本地模型请填写其 /v1 基础地址；如果接口未启用鉴权，API Key 可以留空。','engine.deepl_hint':'自动识别 DeepL Free 和 Pro Key；Key 仅在本任务的服务端进程内使用。','engine.mock':'离线演示','ocr.tesseract':'Tesseract（本地）','ocr.paddle':'PaddleOCR（本地）','gemini.title':'可选：Gemini 图片文字翻译','gemini.note':'只有需要修改复杂图片里的文字时才需要填写 Gemini API Key；普通文档文字翻译不需要。','gemini.api_key':'Gemini API Key','gemini.api_key_required':'Gemini API Key（当前方案需要）','gemini.model':'Gemini 生图模型','gemini.estimate':'计费预测：每张修改图片约 {cost}。本地图片筛选完成后会计算总价；实际费用以服务商账单为准。','gemini.plan_estimate':'当前方案预计约 {total}：{count} 次图片调用 × 每次 {cost}。实际费用以服务商账单为准。',
-    'processing.title':'正在分析文档','processing.note':'提取结构、字体和图片，不调用生图 API',
+    'processing.title':'正在分析文档','processing.note':'提取结构、字体和图片，不调用生图 API','progress.text.label':'文本翻译进度','progress.text.meta':'当前第 {current} 页 · 已完成 {completed}/{total} 页 · {items}/{itemTotal} 个文本块','progress.images.label':'图片处理进度','progress.images.meta':'已完成 {completed}/{total} 张 · {stage}','progress.stage.preparing':'正在准备处理计划','progress.stage.ocr':'正在执行 OCR','progress.stage.translating':'正在翻译图片文字','progress.stage.generating':'正在生成图片','progress.stage.validating':'正在进行质量检查','progress.stage.inpainting':'正在移除原文字','progress.stage.redrawing':'正在绘制译文','progress.stage.reusing':'正在复用已有结果','progress.stage.preserved':'保留原始图片','progress.stage.failed':'质量检查失败','progress.stage.completed':'处理完成',
     'images.title':'图片审核','images.lead':'系统已给出保守建议。请处理所有待确认项并确认预算后继续。','images.accept':'将安全建议应用到待确认项',
     'metric.total':'图片总数','metric.total.note':'文档中的位图素材','metric.whole':'整图候选','metric.whole.note':'高置信度文字丰富图片','metric.pending':'待确认','metric.pending.note':'Logo、照片、界面或低置信度图片','metric.safe':'跳过 / 复用','metric.safe.note':'不产生图片 API 费用','metric.cost':'预计图片费用','metric.cost.note':'基于当前选择的方案',
     'filter.all':'全部','route.review':'待确认','route.whole_image':'整图处理','route.skip':'保留','route.region':'本地 OCR','route.reuse':'重复图片','search.placeholder':'搜索页码、文字或图片 ID',
@@ -413,6 +420,7 @@ function applyLocale(){
   if(allTargetsDone)document.getElementById('renderBtn').textContent=t('text.all_done');
   else if(currentTextLang)document.getElementById('renderBtn').textContent=t('text.render_lang',{lang:currentTextLang.toUpperCase()});
   if(document.getElementById('confirmDialog').open)refreshConfirmSummary();
+  if(currentProgressJob)renderProgress(currentProgressJob);
 }
 function setLocale(next){locale=next;localStorage.setItem('translayer.locale',next);applyLocale();syncProviderFields(false);renderGeminiCostPreview();}
 
@@ -427,6 +435,7 @@ let targetPosition = 0;
 let sharedImageActions = new Map();
 let currentTextLang = null;
 let allTargetsDone = false;
+let currentProgressJob = null;
 let publicConfig={gemini_image_model:'gemini-3.1-flash-image',gemini_estimated_cost_per_image_usd:0.08,gemini_key_configured_on_server:false};
 
 const stateCopy = {
@@ -449,6 +458,24 @@ function esc(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&a
 function localizedReason(reason,fallbackKey) { return reason&&MESSAGES.en[`reason.${reason}`]?t(`reason.${reason}`):(reason||t(fallbackKey)); }
 function qualityReason(reason='') { const code=String(reason).split(':')[0];const key=`quality.reason.${code}`;return MESSAGES.en[key]?t(key):(reason||t('quality.failed')); }
 function money(value) { return '$' + Number(value || 0).toFixed(2); }
+function renderProgress(job){
+  currentProgressJob=job;
+  const phase=job.state==='localizing_text'?'text':job.state==='localizing_images'?'images':null;
+  const progress=phase&&job.progress?job.progress[phase]:null;
+  const panel=document.getElementById('progressPanel');
+  if(!progress||!Number(progress.total)){panel.classList.add('hidden');return;}
+  const completed=Math.max(0,Math.min(Number(progress.completed)||0,Number(progress.total)));
+  const percent=Math.round(completed/Number(progress.total)*100);
+  const stage=t(`progress.stage.${progress.stage||'preparing'}`);
+  document.getElementById('progressLabel').textContent=t(`progress.${phase}.label`);
+  document.getElementById('progressPercent').textContent=`${percent}%`;
+  document.getElementById('progressFill').style.width=`${percent}%`;
+  const track=document.getElementById('progressTrack');track.setAttribute('aria-valuenow',String(percent));track.setAttribute('aria-label',t(`progress.${phase}.label`));
+  document.getElementById('progressMeta').textContent=phase==='text'
+    ?t('progress.text.meta',{current:progress.current||'—',completed,total:progress.total,items:progress.completed_items||0,itemTotal:progress.total_items||0})
+    :t('progress.images.meta',{completed,total:progress.total,stage});
+  panel.classList.remove('hidden');
+}
 function renderGeminiCostPreview(){
   document.getElementById('geminiCostPreview').textContent=t('gemini.estimate',{cost:money(publicConfig.gemini_estimated_cost_per_image_usd)});
 }
@@ -510,6 +537,7 @@ document.getElementById('startBtn').onclick=async()=>{
 async function startNextTarget(){
   try {
     selectedImages.clear();drawerImageId=null;document.getElementById('allowPaid').checked=false;document.getElementById('budget').dataset.touched='';
+    currentProgressJob=null;document.getElementById('progressPanel').classList.add('hidden');
     const target=targetQueue[targetPosition],data=new FormData();data.append('file',sourceFile);data.append('source_lang',document.getElementById('from').value);data.append('target_lang',target);
     const engine=document.getElementById('engine').value,ocr=document.getElementById('ocr').value;if(engine)data.append('translation_engine',engine);if(ocr)data.append('ocr_engine',ocr);
     if(engine!=='mock'){
@@ -528,6 +556,7 @@ async function startNextTarget(){
 async function poll(){
   try {
     const job=await api('/jobs/'+jobId); const copy=stateCopy[job.state]; if(copy){document.getElementById('processingTitle').textContent=t(copy[0]);document.getElementById('processingText').textContent=t(copy[1]);}
+    renderProgress(job);
     if(job.state==='image_review'){setStep('images');showView('imageView');await loadImagePlan();return;}
     if(job.state==='review'||job.state==='done'){setStep('text');showView('textView');await loadTextReview();return;}
     if(job.state==='error'){throw new Error(job.error||t('error.job_failed'));}

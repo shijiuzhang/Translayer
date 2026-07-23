@@ -71,6 +71,16 @@ class Job:
     )
     paid_image_calls: int = 0
     slide_preview_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    progress: dict[str, dict[str, Any]] = field(default_factory=dict, repr=False)
+    progress_lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def update_progress(self, phase: str, **values: Any) -> None:
+        with self.progress_lock:
+            self.progress[phase] = dict(values)
+
+    def public_progress(self) -> dict[str, dict[str, Any]]:
+        with self.progress_lock:
+            return {phase: dict(values) for phase, values in self.progress.items()}
 
     def initialize_image_decisions(self) -> None:
         if self.ir is None:
@@ -123,6 +133,7 @@ class Job:
             "image_plan_locked": self.image_plan_locked,
             "planned_paid_calls": self.planned_paid_calls(),
             "estimated_image_spend_usd": self.estimated_image_spend(),
+            "progress": self.public_progress(),
         }
 
 

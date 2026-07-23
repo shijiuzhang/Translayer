@@ -1,4 +1,4 @@
-# Translayer (v0.2.1)
+# Translayer (v0.2.2)
 
 English | [简体中文](README.zh-CN.md) | [Deutsch](README.de.md)
 
@@ -84,7 +84,7 @@ graph TD
 
 ---
 
-## ✨ Key Features (v0.2.1)
+## ✨ Key Features (v0.2.2)
 
 * **🌐 Multilingual & Font-Aware OCR**: Full support for English, Chinese, and German as source/target languages. Automatically provisions language-specific OCR engines (e.g. Tesseract langpacks) and selects proper rendering fonts.
 * **⚡ Human-in-the-Loop Image Screening**: Uses local, zero-API Tesseract TSV probes (`--psm 11`) to analyze images for text density, line count, and OCR confidence. Separates text-heavy graphics from simple labels, lets users manually select images for AI translation in the review UI, and filters out system icons.

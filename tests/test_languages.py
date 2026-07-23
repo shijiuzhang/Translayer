@@ -89,12 +89,20 @@ def test_pptx_roundtrip_all_language_directions(
     _source_deck(input_path, source)
 
     ir = parse_document(str(input_path), source, target, asset_dir=str(tmp_path / "assets"))
+    progress_events = []
     with monkeypatch.context() as patch:
         patch.setattr(
             "translayer.localize.text_pipeline.registry.get",
             lambda kind, key: _MatrixTranslator(),
         )
-        localize_text(ir, engine_name="matrix")
+        localize_text(
+            ir,
+            engine_name="matrix",
+            progress_callback=progress_events.append,
+        )
+    assert progress_events[0]["completed"] == 0
+    assert progress_events[-1]["completed"] == progress_events[-1]["total"]
+    assert progress_events[-1]["completed_items"] == progress_events[-1]["total_items"]
     render_document(ir, str(input_path), str(output_path))
 
     rendered = Presentation(output_path)

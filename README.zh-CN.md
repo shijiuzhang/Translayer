@@ -1,4 +1,4 @@
-# Translayer（v0.2.1）
+# Translayer（v0.2.2）
 
 [English](README.md) | 简体中文 | [Deutsch](README.de.md)
 

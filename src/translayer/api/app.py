@@ -38,7 +38,7 @@ from translayer.localize.whole_image_quality import (
 from translayer.pipeline import enrich_document, parse_document, render_document
 from translayer.plugins import registry
 
-app = FastAPI(title="Translayer", version="0.2.1")
+app = FastAPI(title="Translayer", version="0.2.2")
 store = JobStore()
 
 _WEB_DIR = os.path.join(os.path.dirname(__file__), "..", "web")
@@ -60,6 +60,7 @@ def _process(job: Job) -> None:
             ir,
             engine_name=job.translation_engine,
             engine_options=job.translation_options,
+            progress_callback=lambda progress: job.update_progress("text", **progress),
         )
         job.state = "image_review" if job.images and ir.resources.images else "review"
     except Exception as exc:  # noqa: BLE001 - surface failures to the client
@@ -363,14 +364,51 @@ def _continue_after_image_review(
             raise RuntimeError("IR not ready")
         job.state = "localizing_images"
         ir = job.ir
+        total_images = len(ir.resources.images)
+        completed_image_ids: set[str] = set()
+
+        def update_image_progress(
+            stage: str,
+            image_id: str | None = None,
+            *,
+            completed: bool = False,
+        ) -> None:
+            if completed and image_id:
+                completed_image_ids.add(image_id)
+            job.update_progress(
+                "images",
+                completed=len(completed_image_ids),
+                total=total_images,
+                current=image_id,
+                stage=stage,
+            )
+
+        update_image_progress("preparing")
         for image in ir.resources.images:
             decision = job.image_decisions[image.id]
             if decision.action in {"preserve", "logo", "reuse"}:
                 image.text_regions = []
+                if decision.action in {"preserve", "logo"}:
+                    update_image_progress(
+                        "preserved",
+                        image.id,
+                        completed=True,
+                    )
             elif decision.action == "region" and image.selection:
                 image.selection.route = "region"
 
-        ImageTextEnricher(job.ocr_engine, source_lang=job.source_lang).enrich(ir)
+        image_text_enricher = ImageTextEnricher(
+            job.ocr_engine,
+            source_lang=job.source_lang,
+        )
+        region_images = [
+            image
+            for image in ir.resources.images
+            if job.image_decisions[image.id].action == "region"
+        ]
+        for image in region_images:
+            update_image_progress("ocr", image.id)
+            image_text_enricher.detect_image(image)
 
         paid_images = [
             image
@@ -401,6 +439,7 @@ def _continue_after_image_review(
                 output = os.path.join(output_dir, f"{image.id}{extension}")
                 try:
                     try:
+                        update_image_progress("ocr", image.id)
                         ImageTextEnricher(
                             job.ocr_engine,
                             source_lang=job.source_lang,
@@ -412,6 +451,7 @@ def _continue_after_image_review(
                         )
                         quality_failures.append(image)
                         continue
+                    update_image_progress("translating", image.id)
                     mappings = prepare_text_mappings(
                         image,
                         translation_engine=job.translation_engine,
@@ -419,6 +459,7 @@ def _continue_after_image_review(
                         target_lang=job.target_lang,
                         translation_options=job.translation_options,
                     )
+                    update_image_progress("generating", image.id)
                     engine.localize(
                         image.data_ref,
                         output,
@@ -426,6 +467,7 @@ def _continue_after_image_review(
                         tgt=job.target_lang,
                         text_mappings=mappings,
                     )
+                    update_image_progress("validating", image.id)
                     validation = validate_localized_output(
                         image,
                         output,
@@ -454,6 +496,13 @@ def _continue_after_image_review(
                         f"image_generation_failed:{type(exc).__name__}"
                     )
                     quality_failures.append(image)
+                finally:
+                    stage = (
+                        "completed"
+                        if image.localization_validation.status == "passed"
+                        else "failed"
+                    )
+                    update_image_progress(stage, image.id, completed=True)
             job.paid_image_calls += guard.calls_reserved
             if quality_failures:
                 for image in quality_failures:
@@ -470,13 +519,27 @@ def _continue_after_image_review(
             translation_engine=job.translation_engine,
             inpaint_engine=job.inpaint_engine,
             translation_options=job.translation_options,
+            progress_callback=lambda stage, image: update_image_progress(
+                stage,
+                image.id,
+                completed=stage == "completed",
+            ),
         )
+        for image in region_images:
+            if image.id not in completed_image_ids:
+                update_image_progress("completed", image.id, completed=True)
         for image in ir.resources.images:
             decision = job.image_decisions[image.id]
             if decision.action != "reuse" or not image.selection or not image.selection.duplicate_of:
                 continue
+            update_image_progress("reusing", image.id)
             source = ir.image_by_id(image.selection.duplicate_of)
             image.localized_data_ref = source.localized_data_ref if source else None
+            update_image_progress("completed", image.id, completed=True)
+        for image in ir.resources.images:
+            if image.id not in completed_image_ids:
+                update_image_progress("completed", image.id, completed=True)
+        update_image_progress("completed")
         job.state = "review"
     except Exception as exc:  # noqa: BLE001
         job.state = "error"
