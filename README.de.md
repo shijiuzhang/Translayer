@@ -10,6 +10,18 @@
 
 Translayer ist eine KI-native Zwischenschicht für die Dokumentlokalisierung. PPTX-, DOCX- und HTML-Dateien werden in ein einheitliches `DocumentIR` überführt, mit Layout-, Terminologie- und OCR-Daten angereichert, in einem überprüfbaren Workflow lokalisiert und anschließend in das ursprüngliche Format zurückgeschrieben. Neben normalem Dokumenttext kann Translayer auch Text in Bildern erkennen und bearbeiten.
 
+## Neu in v0.2.2
+
+- Während der Textübersetzung werden die aktuelle Folie, abgeschlossene Folien
+  und Textblöcke angezeigt.
+- Nach Freigabe des Bildplans werden fertige Bilder und der aktuelle OCR-,
+  Übersetzungs-, Inpainting-, Neuzeichnungs-, Generierungs-, Wiederverwendungs-
+  oder Prüfschritt angezeigt.
+- Die OpenAI-kompatible Engine unterstützt Moonshot Kimi K2.5/K2.6, deaktiviert
+  Thinking automatisch und sendet nicht den inkompatiblen Wert `temperature: 0`.
+- HTTP-Fehler enthalten die Antwort des Anbieters, damit Authentifizierungs-,
+  Modell- und Parameterfehler nachvollziehbar sind.
+
 ## Hauptfunktionen
 
 - Parser und Renderer für PPTX, DOCX und HTML.
@@ -21,8 +33,10 @@ Translayer ist eine KI-native Zwischenschicht für die Dokumentlokalisierung. PP
 - Gemini-Ganzbildlokalisierung mit OCR-Qualitätsprüfung vor und nach der Generierung.
 - Manuelle Bildfreigabe, Kostenschätzung und verbindliches Budgetlimit.
 - Beliebige OpenAI-kompatible Chat-Completions-Endpunkte, einschließlich lokaler und interner APIs.
+- Kompatible Request-Parameter für Moonshot Kimi K2.5/K2.6.
 - DeepL Free und Pro.
 - Auftragsbezogene Zugangsdaten für OpenAI-kompatible APIs, DeepL und Gemini.
+- Messbarer Fortschritt für lange Text- und Bildaufträge.
 
 ## Ablauf
 
@@ -92,6 +106,24 @@ Beim Erstellen eines Auftrags stehen folgende Textübersetzer zur Verfügung:
 1. **OpenAI-kompatible API**: Basis-URL, optionaler API-Schlüssel und Modellname. Bei lokalen APIs ohne Authentifizierung darf der Schlüssel leer bleiben.
 2. **DeepL API**: DeepL-Schlüssel eingeben; anhand des Suffixes `:fx` wird automatisch Free oder Pro gewählt.
 3. **Offline-Demo**: Keine externen Aufrufe, nur zur Prüfung des Workflows.
+
+Für Moonshot Kimi wählen Sie **OpenAI-kompatible API** und tragen Folgendes ein:
+
+```text
+API-Basis-URL: https://api.moonshot.cn/v1
+Modell:        kimi-k2.6
+API-Schlüssel: Ihr Moonshot-API-Schlüssel
+```
+
+Während der Textlokalisierung zeigt der Fortschrittsbalken Folien und
+Textblöcke. Nach Freigabe des Bildplans zeigt er fertige Bilder sowie den
+aktuellen OCR-, Übersetzungs-, Inpainting-, Neuzeichnungs-, Generierungs-,
+Prüf- oder Wiederverwendungsschritt. Dieselben Daten liefert
+`GET /jobs/{job_id}` unter `progress.text` und `progress.images`.
+
+Die **Offline-Demo führt keine semantische Übersetzung aus**. Sie setzt lediglich
+eine Zielsprachenmarkierung vor den Ausgangstext und dient zur Prüfung des
+Upload-, Freigabe- und Exportablaufs.
 
 Der Gemini-API-Schlüssel ist optional und wird **nur benötigt, wenn Text in komplexen Bildern geändert werden soll**. Für normalen Dokumenttext ist kein Gemini-Schlüssel erforderlich. Enthält der freizugebende Plan Ganzbildbearbeitungen, fragt der Bestätigungsdialog erneut nach dem Schlüssel.
 
@@ -166,6 +198,17 @@ Wichtige Umgebungsvariablen:
 | `TRANSLAYER_IMAGE_CACHE_DIR` | Cache für Gemini-Bilder |
 
 Auftragsbezogene Werte aus der Weboberfläche haben Vorrang. Geheimnisse bleiben im Auftragsobjekt des laufenden Serverprozesses und werden weder in `DocumentIR` noch in öffentlichen API-Antworten gespeichert.
+
+## Bekannte Einschränkungen
+
+- Dokumentanalyse, erste Bildprüfung und abschließendes Rendering zeigen derzeit
+  nur benannte Phasen und keine Prozentwerte pro Element.
+- Die OCR-Qualität hängt von Auflösung, Schrift, Kontrast und Bildkomplexität ab.
+  Kleine, dichte oder dekorative chinesische Schrift kann falsch erkannt werden
+  oder im Ergebnis verbleiben; Bilder sollten vor dem Export geprüft werden.
+- Lokales Neuzeichnen eignet sich am besten für wenige klar begrenzte
+  Textbereiche. Komplexe Infografiken benötigen meist eine Ganzbildlokalisierung
+  und weiterhin eine manuelle Prüfung.
 
 ## Projektstruktur
 

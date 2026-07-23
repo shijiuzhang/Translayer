@@ -11,6 +11,18 @@ English | [简体中文](README.zh-CN.md) | [Deutsch](README.de.md)
 
 Translayer is an AI-native document localization middle layer. Existing translation tools treat document translation as a pure NLP problem, resulting in broken slide layouts, ignored text inside graphics, and formatting collapse. Translayer solves this by parsing documents into a unified intermediate representation (**DocumentIR**), enriching them with layout and OCR metadata, localizing them through human-in-the-loop and VLM-based workflows, and rendering them back losslessly — including redrawing/editing in-image text.
 
+## What's New in v0.2.2
+
+- Text translation now shows the current slide, completed slides, and completed
+  text blocks instead of appearing idle during long model calls.
+- Approved image-plan execution now shows completed images and the active OCR,
+  translation, redraw, generation, reuse, or validation stage.
+- Moonshot Kimi K2.5/K2.6 is supported through the OpenAI-compatible engine.
+  Translayer automatically disables thinking and avoids the unsupported
+  `temperature: 0` parameter for these models.
+- Provider HTTP errors include the response body so configuration and model
+  errors are visible in the job status.
+
 ---
 
 ## 🤖 AI & Developer Quick Reference (LLM-Ready Context)
@@ -93,7 +105,9 @@ graph TD
   - **Post-Gen**: Re-OCRs the Gemini-generated image. If it detects un-erased source text (residual leftovers) or missing target translations, it invalidates the cache and returns the job to manual review.
 * **💰 Cost Guard System**: Configurable per-job cost limits, estimated provider costs, and a budget gate to prevent runaway API fees.
 * **🖥️ Trilingual Web Interface**: Single-page, modern layout (defaults to English, supports Chinese and German) featuring document upload, advanced settings, cost estimation, image review panels, live progress monitoring, and output download.
+* **📊 Measurable Long-Running Jobs**: Text progress reports slides and text blocks; approved image processing reports image counts and the current OCR, translation, redraw, generation, reuse, or validation stage.
 * **🔑 Task-scoped Provider Credentials**: Users can configure any OpenAI-compatible translation endpoint, DeepL, and optional Gemini image editing directly in the web UI. Secrets stay in the in-memory job and are never returned by public job APIs.
+* **🔌 Moonshot Kimi Compatibility**: Kimi K2.5/K2.6 requests use the model-compatible non-thinking payload automatically when the API base URL is a Moonshot endpoint.
 * **💵 Visible Image Cost Forecasts**: The UI shows the configured per-image planning rate, projected paid calls, estimated total, and a hard approval budget before Gemini image editing starts.
 * **🐳 Production Docker Container**: Fully-packaged image featuring LibreOffice, Poppler, Tesseract (with eng, chi_sim, deu packs), Python 3.11, and multilingual fonts.
 
@@ -272,6 +286,23 @@ when the approved image plan contains paid whole-image edits. The UI shows the
 configured per-image planning estimate and the projected total before approval;
 actual provider billing may differ from this safety estimate.
 
+For Moonshot Kimi, select **OpenAI-compatible API** and use:
+
+```text
+API base URL: https://api.moonshot.cn/v1
+Model:        kimi-k2.6
+API key:      your Moonshot API key
+```
+
+During text localization, the progress panel reports slides and text blocks.
+After the image plan is approved, it reports completed images and the current
+OCR, translation, inpainting, redrawing, generation, validation, or reuse stage.
+The same data is available from `GET /jobs/{job_id}` under `progress.text` and
+`progress.images`.
+
+The **Offline demo** engine is only a workflow test: it prefixes source strings
+with a target-language marker and does not produce a semantic translation.
+
 ---
 
 ## 🔌 Extensibility & Plugin Registry
@@ -304,6 +335,19 @@ List all loaded and available plugins via the CLI:
 ```bash
 translayer plugins
 ```
+
+---
+
+## Known Limitations
+
+- Parsing, initial image screening, and final rendering currently show named
+  stages without item-level percentages.
+- OCR accuracy varies with resolution, font style, contrast, and image
+  complexity. Small or dense Chinese text can be misread or remain in a
+  localized image, so image results should be reviewed before export.
+- Local region redraw is best suited to a few clear text areas. Complex
+  infographics generally need whole-image localization and still require human
+  review.
 
 ---
 

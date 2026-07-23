@@ -7,20 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.2] - 2026-07-23
 
+This release improves long-running job visibility and compatibility with
+Moonshot's Kimi reasoning models. It does not change the document IR schema.
+
 ### Added
 
-- Live text-localization progress with completed slides, text blocks, and the current slide.
-- Live image-plan progress with completed image counts and OCR, translation, inpainting, redrawing, generation, reuse, and quality-validation stages.
-- English, German, and Simplified Chinese progress labels in the web interface.
+- Live text-localization progress in the web UI, including the current slide,
+  completed and total slides, and completed and total text blocks.
+- Live approved-image-plan progress, including completed and total images plus
+  the active `preparing`, `ocr`, `translating`, `inpainting`, `redrawing`,
+  `generating`, `validating`, `reusing`, `preserved`, `failed`, or `completed`
+  stage.
+- A thread-safe `progress` object in public job responses:
+
+  ```json
+  {
+    "progress": {
+      "text": {
+        "completed": 3,
+        "total": 12,
+        "completed_items": 42,
+        "total_items": 134,
+        "current": 4,
+        "stage": "translating"
+      },
+      "images": {
+        "completed": 8,
+        "total": 25,
+        "current": "s5-sh24-img",
+        "stage": "ocr"
+      }
+    }
+  }
+  ```
+
+- English, German, and Simplified Chinese labels for progress details and image
+  processing sub-stages.
 
 ### Fixed
 
-- Moonshot Kimi K2.5/K2.6 compatibility by disabling thinking and omitting the unsupported zero-temperature parameter.
-- OpenAI-compatible HTTP errors now include the provider response body for actionable diagnostics.
+- Moonshot Kimi K2.5/K2.6 requests no longer send `temperature: 0`, which these
+  models reject with HTTP 400. Translayer sends
+  `"thinking": {"type": "disabled"}` instead when a Kimi K2.5/K2.6 model is
+  used through a Moonshot API base URL.
+- OpenAI-compatible HTTP failures now include the provider response body in the
+  job error, making invalid parameters, authentication failures, and model
+  errors diagnosable from server/job status instead of a generic HTTP code.
 
 ### Changed
 
+- Text localization now emits progress after each slide while preserving
+  slide-level context and ordering.
+- Image execution now reports OCR, translation, local redraw, whole-image
+  generation, validation, preservation, and reuse as distinct stages.
+- The progress panel remains hidden during phases without measurable totals and
+  uses the existing job polling endpoint; no additional polling request is
+  introduced.
 - Bumped version to `0.2.2`.
+
+### Known limitations
+
+- Parsing, initial image screening, and final rendering still expose named
+  states rather than item-level percentages.
+- Local OCR quality depends on source resolution, font style, contrast, and
+  image complexity. Small or dense Chinese text may be misread; generated or
+  locally redrawn images should still be reviewed before export.
+- The `mock`/Offline demo translation engine validates the workflow but does
+  not perform semantic translation; it prefixes source text with the target
+  language code.
 
 ## [0.2.1] - 2026-07-23
 
