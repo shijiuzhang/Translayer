@@ -189,9 +189,9 @@ the GitHub Release, unzip it, and double-click `Translayer.exe`. The executable
 starts a local Translayer server and opens the browser UI automatically; it does
 not compile the project or run tests on the user's machine.
 
-For full PPTX preview and local OCR support, install LibreOffice, Poppler, and
-Tesseract OCR with the English, German, and Simplified Chinese language packs,
-or make equivalent binaries available on `PATH`.
+The portable package includes Tesseract OCR, English/German/Simplified Chinese
+OCR language data, and Poppler's `pdftoppm.exe`. For full PPTX slide previews,
+install LibreOffice or make `soffice.exe` available on `PATH`.
 
 ### Prerequisites
 Translayer requires a few system packages for document and image processing:

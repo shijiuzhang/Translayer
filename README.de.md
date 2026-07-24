@@ -73,10 +73,10 @@ Windows-Nutzer können das Release-Asset
 öffnet automatisch die Browseroberfläche; sie kompiliert das Projekt nicht auf
 dem Benutzerrechner und führt dort keine Tests aus.
 
-Für vollständige PPTX-Vorschauen und lokales OCR müssen LibreOffice, Poppler
-und Tesseract OCR mit englischen, deutschen und vereinfachten chinesischen
-Sprachpaketen installiert sein oder entsprechende Programme auf `PATH`
-verfügbar sein.
+Das portable Paket enthält Tesseract OCR, englische/deutsche/vereinfachte
+chinesische OCR-Sprachdaten und Popplers `pdftoppm.exe`. Für vollständige
+PPTX-Folienvorschauen muss LibreOffice weiterhin installiert oder `soffice.exe`
+auf `PATH` verfügbar sein.
 
 ### Aus dem Quellcode
 

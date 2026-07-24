@@ -29,7 +29,11 @@ jobs:
         shell: pwsh
         run: |
           choco install tesseract -y --no-progress
+          choco install poppler -y --no-progress
           "C:\Program Files\Tesseract-OCR" >> $env:GITHUB_PATH
+          $pdftoppm = Get-ChildItem -Path $env:ChocolateyInstall, "C:\tools" -Recurse -Filter pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $pdftoppm) { throw "pdftoppm.exe not found after installing poppler" }
+          $pdftoppm.Directory.FullName >> $env:GITHUB_PATH
 
       - name: Install dependencies
         run: |
@@ -55,6 +59,32 @@ jobs:
           New-Item -ItemType Directory -Force -Path $packageDir | Out-Null
           Copy-Item "dist\Translayer.exe" "$packageDir\Translayer.exe"
           Copy-Item "packaging\windows\README-WINDOWS.md" "$packageDir\README-WINDOWS.md"
+          New-Item -ItemType Directory -Force -Path "$packageDir\tools" | Out-Null
+
+          $tesseractSource = "C:\Program Files\Tesseract-OCR"
+          $tesseractTarget = "$packageDir\tools\tesseract"
+          if (-not (Test-Path "$tesseractSource\tesseract.exe")) {
+            throw "tesseract.exe not found at $tesseractSource"
+          }
+          Copy-Item $tesseractSource $tesseractTarget -Recurse
+
+          $tessdataTarget = "$tesseractTarget\tessdata"
+          New-Item -ItemType Directory -Force -Path $tessdataTarget | Out-Null
+          foreach ($lang in @("eng", "deu", "chi_sim")) {
+            $trainedData = "$tessdataTarget\$lang.traineddata"
+            if (-not (Test-Path $trainedData)) {
+              Invoke-WebRequest `
+                -Uri "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/$lang.traineddata" `
+                -OutFile $trainedData
+            }
+          }
+
+          $pdftoppm = Get-ChildItem -Path $env:ChocolateyInstall, "C:\tools" -Recurse -Filter pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $pdftoppm) { throw "pdftoppm.exe not found after installing poppler" }
+          $popplerTarget = "$packageDir\tools\poppler\bin"
+          New-Item -ItemType Directory -Force -Path $popplerTarget | Out-Null
+          Copy-Item "$($pdftoppm.Directory.FullName)\*" $popplerTarget -Recurse
+
           $archive = "dist\Translayer-$tag-windows-x64.zip"
           if (Test-Path $archive) { Remove-Item $archive }
           Compress-Archive -Path "$packageDir\*" -DestinationPath $archive

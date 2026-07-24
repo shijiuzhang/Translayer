@@ -69,9 +69,9 @@ Windows 用户可以从 GitHub Release 下载
 EXE 会在本机启动 Translayer 服务并自动打开浏览器界面；它不会在用户电脑
 上编译项目，也不会运行测试。
 
-如果需要完整的 PPTX 页面预览和本地 OCR，请安装 LibreOffice、Poppler 和
-Tesseract OCR，并安装英语、德语、简体中文语言包，或确保等效命令行工具
-已经在 `PATH` 中。
+便携包已经内置 Tesseract OCR、英语/德语/简体中文 OCR 语言包，以及
+Poppler 的 `pdftoppm.exe`。如果需要完整的 PPTX 页面预览，仍需安装
+LibreOffice，或确保 `soffice.exe` 已经在 `PATH` 中。
 
 ### 从源码安装
 

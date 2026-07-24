@@ -18,8 +18,9 @@ source slides and reusable provider credentials.
   the browser UI, and exposes bundled tool directories on `PATH` when present.
 - GitHub Actions workflow for building a Windows x64 PyInstaller executable,
   packaging it as a zip, and uploading it to a GitHub Release.
-- Windows package notes describing the local-server/browser runtime model and
-  required helper tools for PPTX previews and local OCR.
+- Windows package notes describing the local-server/browser runtime model. The
+  portable zip now bundles Tesseract OCR with English, German, and Simplified
+  Chinese language data plus Poppler for PDF-to-image rasterization.
 - Small-image OCR upscaling, confidence filtering, wrapped-line paragraph
   merging, and line-level erase boxes for more reliable Tesseract recognition
   and cleanup.
