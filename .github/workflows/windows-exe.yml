@@ -1,0 +1,68 @@
+name: Windows EXE
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to upload the Windows package to"
+        required: false
+        default: ""
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -e ".[dev,gemini]"
+          uv pip install --system pyinstaller pytesseract opencv-python
+
+      - name: Lint
+        run: ruff check src/translayer tests
+
+      - name: Test
+        run: pytest -q
+
+      - name: Build EXE
+        run: |
+          pyinstaller --noconfirm --clean --onefile --name Translayer --collect-submodules translayer --add-data "src/translayer/web;translayer/web" src/translayer/desktop.py
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}"
+          if ([string]::IsNullOrWhiteSpace($tag)) { $tag = "manual" }
+          $packageDir = "dist\Translayer-Windows"
+          New-Item -ItemType Directory -Force -Path $packageDir | Out-Null
+          Copy-Item "dist\Translayer.exe" "$packageDir\Translayer.exe"
+          Copy-Item "packaging\windows\README-WINDOWS.md" "$packageDir\README-WINDOWS.md"
+          $archive = "dist\Translayer-$tag-windows-x64.zip"
+          if (Test-Path $archive) { Remove-Item $archive }
+          Compress-Archive -Path "$packageDir\*" -DestinationPath $archive
+          "archive=$archive" >> $env:GITHUB_OUTPUT
+        id: package
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Translayer-Windows
+          path: ${{ steps.package.outputs.archive }}
+
+      - name: Upload release asset
+        if: ${{ github.event_name == 'release' || inputs.release_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name || inputs.release_tag }}" "${{ steps.package.outputs.archive }}" --clobber

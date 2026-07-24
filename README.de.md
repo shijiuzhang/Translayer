@@ -65,6 +65,21 @@ Bilder werden einer der folgenden Routen zugeordnet:
 
 ## Installation
 
+### Windows-EXE
+
+Windows-Nutzer können das Release-Asset
+`Translayer-v0.2.3-windows-x64.zip` von GitHub herunterladen, entpacken und
+`Translayer.exe` doppelklicken. Die EXE startet lokal den Translayer-Server und
+öffnet automatisch die Browseroberfläche; sie kompiliert das Projekt nicht auf
+dem Benutzerrechner und führt dort keine Tests aus.
+
+Für vollständige PPTX-Vorschauen und lokales OCR müssen LibreOffice, Poppler
+und Tesseract OCR mit englischen, deutschen und vereinfachten chinesischen
+Sprachpaketen installiert sein oder entsprechende Programme auf `PATH`
+verfügbar sein.
+
+### Aus dem Quellcode
+
 Erforderlich ist Python 3.11 oder neuer. Für Bildprüfung und Seitenvorschau werden LibreOffice, Poppler, Tesseract und die benötigten Sprachpakete empfohlen.
 
 macOS:

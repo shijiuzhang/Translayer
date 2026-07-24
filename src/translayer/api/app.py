@@ -11,7 +11,9 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import threading
+from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -41,7 +43,14 @@ from translayer.plugins import registry
 app = FastAPI(title="Translayer", version="0.2.3")
 store = JobStore()
 
-_WEB_DIR = os.path.join(os.path.dirname(__file__), "..", "web")
+def _web_dir() -> Path:
+    bundle_root = getattr(sys, "_MEIPASS", None)
+    if bundle_root:
+        return Path(bundle_root) / "translayer" / "web"
+    return Path(__file__).resolve().parents[1] / "web"
+
+
+_WEB_DIR = _web_dir()
 
 
 def _process(job: Job) -> None:
@@ -70,7 +79,7 @@ def _process(job: Job) -> None:
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
-    path = os.path.join(_WEB_DIR, "index.html")
+    path = _WEB_DIR / "index.html"
     with open(path, encoding="utf-8") as fh:
         return fh.read()
 

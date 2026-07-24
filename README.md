@@ -182,6 +182,17 @@ Every document is represented by a standardized JSON object. Below is a simplifi
 
 ## 📥 Installation
 
+### Windows EXE
+
+Windows users can download the `Translayer-v0.2.3-windows-x64.zip` asset from
+the GitHub Release, unzip it, and double-click `Translayer.exe`. The executable
+starts a local Translayer server and opens the browser UI automatically; it does
+not compile the project or run tests on the user's machine.
+
+For full PPTX preview and local OCR support, install LibreOffice, Poppler, and
+Tesseract OCR with the English, German, and Simplified Chinese language packs,
+or make equivalent binaries available on `PATH`.
+
 ### Prerequisites
 Translayer requires a few system packages for document and image processing:
 - **LibreOffice**: For document format conversions (PDF/PPTX).

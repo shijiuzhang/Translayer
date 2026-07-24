@@ -13,6 +13,13 @@ source slides and reusable provider credentials.
 
 ### Added
 
+- Windows desktop launcher entry point for packaged builds. The executable
+  starts the local FastAPI server, chooses an available localhost port, opens
+  the browser UI, and exposes bundled tool directories on `PATH` when present.
+- GitHub Actions workflow for building a Windows x64 PyInstaller executable,
+  packaging it as a zip, and uploading it to a GitHub Release.
+- Windows package notes describing the local-server/browser runtime model and
+  required helper tools for PPTX previews and local OCR.
 - Small-image OCR upscaling, confidence filtering, wrapped-line paragraph
   merging, and line-level erase boxes for more reliable Tesseract recognition
   and cleanup.
