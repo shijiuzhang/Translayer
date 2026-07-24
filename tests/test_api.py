@@ -35,6 +35,11 @@ def test_index_served():
     assert 'id="translationApiKey"' in r.text
     assert 'id="translationModel"' in r.text
     assert 'id="geminiApiKey"' in r.text
+    assert 'id="clearCredentials"' in r.text
+    assert "translayer.providerCredentials.v1" in r.text
+    assert r.text.count("'credentials.local':") == 3
+    assert r.text.count("'credentials.clear':") == 3
+    assert r.text.count("'credentials.cleared':") == 3
     assert 'id="geminiCostPreview"' in r.text
     assert 'id="progressPanel"' in r.text
     assert 'role="progressbar"' in r.text

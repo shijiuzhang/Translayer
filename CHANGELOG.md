@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-07-24
+
+This release substantially improves local OCR output, preserves complete
+translations during layout fitting, and adds safer handling for bilingual
+source slides and reusable provider credentials.
+
+### Added
+
+- Small-image OCR upscaling, confidence filtering, wrapped-line paragraph
+  merging, and line-level erase boxes for more reliable Tesseract recognition
+  and cleanup.
+- Clean text-canvas reflow for dense, text-only screenshots, including vertical
+  expansion when translated content needs more space.
+- Conservative bilingual duplicate detection: when a nearby target-language
+  block already matches a translated source block, Translayer removes the
+  source-language duplicate and preserves the author's target-language object.
+- Browser-local persistence for OpenAI-compatible, DeepL, and Gemini
+  credentials, provider models, translation-engine selection, and OCR-engine
+  selection.
+- A trilingual control for clearing saved browser credentials, with English,
+  German, and Simplified Chinese copy.
+
+### Fixed
+
+- Translation results are no longer hard-truncated to estimated character
+  limits, preventing fragments such as `collaborati` from reaching review and
+  export.
+- Latin words are kept intact while font size and wrapping are adapted to the
+  available text box.
+- PPTX text fitting now respects foreground pictures and the filled shape that
+  visually contains the text, preventing translated text from crossing panel
+  boundaries.
+- Identical source and target text is no longer rewritten, preserving existing
+  formatting for content such as `Q & A`.
+- Cropped PPTX pictures are OCR-processed using their visible pixels and have
+  their crop reset when a localized replacement is written back.
+- Local image inpainting uses line-level erase boxes instead of wiping the
+  entire paragraph rectangle.
+
+### Changed
+
+- Character-count estimates are prompt guidance only; complete meaning takes
+  priority and the renderer is responsible for fitting the result.
+- Dense local-OCR screenshots can be rebuilt as clean target-language text
+  canvases rather than forcing long translations into the original OCR boxes.
+- Browser credentials remain on the current device and are sent to the server
+  only when creating or approving a job; public job responses still never
+  expose them.
+- Bumped version to `0.2.3`.
+
+### Verification
+
+- `115` automated tests pass, including OCR grouping, image reflow, cropped
+  pictures, full-word fitting, panel-boundary fitting, bilingual deduplication,
+  and trilingual credential controls.
+
+### Known limitations
+
+- Bilingual duplicate removal intentionally requires a close semantic and
+  spatial match; distant or heavily paraphrased bilingual content remains for
+  manual review.
+- Browser-saved credentials use local storage and are not encrypted. Users
+  should clear them after use on shared devices.
+- Local OCR quality still depends on source resolution, font style, contrast,
+  and image complexity.
+
 ## [0.2.2] - 2026-07-23
 
 This release improves long-running job visibility and compatibility with

@@ -1,4 +1,4 @@
-# Translayer (v0.2.2)
+# Translayer (v0.2.3)
 
 English | [简体中文](README.zh-CN.md) | [Deutsch](README.de.md)
 
@@ -11,17 +11,19 @@ English | [简体中文](README.zh-CN.md) | [Deutsch](README.de.md)
 
 Translayer is an AI-native document localization middle layer. Existing translation tools treat document translation as a pure NLP problem, resulting in broken slide layouts, ignored text inside graphics, and formatting collapse. Translayer solves this by parsing documents into a unified intermediate representation (**DocumentIR**), enriching them with layout and OCR metadata, localizing them through human-in-the-loop and VLM-based workflows, and rendering them back losslessly — including redrawing/editing in-image text.
 
-## What's New in v0.2.2
+## What's New in v0.2.3
 
-- Text translation now shows the current slide, completed slides, and completed
-  text blocks instead of appearing idle during long model calls.
-- Approved image-plan execution now shows completed images and the active OCR,
-  translation, redraw, generation, reuse, or validation stage.
-- Moonshot Kimi K2.5/K2.6 is supported through the OpenAI-compatible engine.
-  Translayer automatically disables thinking and avoids the unsupported
-  `temperature: 0` parameter for these models.
-- Provider HTTP errors include the response body so configuration and model
-  errors are visible in the job status.
+- Local Tesseract OCR now upscales small screenshots, filters noise, merges
+  wrapped lines, and erases text line by line.
+- Dense text-only screenshots can be rebuilt as clean target-language text
+  canvases that expand vertically when needed.
+- Complete translations are preserved; layout fitting no longer creates
+  incomplete words or silently drops meaning.
+- PPTX text is fitted inside foreground images and visual panel boundaries.
+- Existing bilingual target-language content is preserved while a matching,
+  nearby source-language duplicate is removed.
+- Provider URLs, keys, models, and engine selections persist in the current
+  browser and can be cleared from the trilingual UI.
 
 ---
 
@@ -96,7 +98,7 @@ graph TD
 
 ---
 
-## ✨ Key Features (v0.2.2)
+## ✨ Key Features (v0.2.3)
 
 * **🌐 Multilingual & Font-Aware OCR**: Full support for English, Chinese, and German as source/target languages. Automatically provisions language-specific OCR engines (e.g. Tesseract langpacks) and selects proper rendering fonts.
 * **⚡ Human-in-the-Loop Image Screening**: Uses local, zero-API Tesseract TSV probes (`--psm 11`) to analyze images for text density, line count, and OCR confidence. Separates text-heavy graphics from simple labels, lets users manually select images for AI translation in the review UI, and filters out system icons.
@@ -106,7 +108,7 @@ graph TD
 * **💰 Cost Guard System**: Configurable per-job cost limits, estimated provider costs, and a budget gate to prevent runaway API fees.
 * **🖥️ Trilingual Web Interface**: Single-page, modern layout (defaults to English, supports Chinese and German) featuring document upload, advanced settings, cost estimation, image review panels, live progress monitoring, and output download.
 * **📊 Measurable Long-Running Jobs**: Text progress reports slides and text blocks; approved image processing reports image counts and the current OCR, translation, redraw, generation, reuse, or validation stage.
-* **🔑 Task-scoped Provider Credentials**: Users can configure any OpenAI-compatible translation endpoint, DeepL, and optional Gemini image editing directly in the web UI. Secrets stay in the in-memory job and are never returned by public job APIs.
+* **🔑 Reusable Provider Credentials**: Users can configure any OpenAI-compatible translation endpoint, DeepL, and optional Gemini image editing directly in the web UI. Connection settings persist in browser-local storage, can be cleared from the UI, and are never returned by public job APIs.
 * **🔌 Moonshot Kimi Compatibility**: Kimi K2.5/K2.6 requests use the model-compatible non-thinking payload automatically when the API base URL is a Moonshot endpoint.
 * **💵 Visible Image Cost Forecasts**: The UI shows the configured per-image planning rate, projected paid calls, estimated total, and a hard approval budget before Gemini image editing starts.
 * **🐳 Production Docker Container**: Fully-packaged image featuring LibreOffice, Poppler, Tesseract (with eng, chi_sim, deu packs), Python 3.11, and multilingual fonts.
@@ -280,11 +282,14 @@ translayer plan-images input.pptx -o cost_plan.json \
 translayer serve --host 127.0.0.1 --port 8000
 ```
 
-The job form accepts task-scoped credentials for OpenAI-compatible translation,
-DeepL, and optional Gemini image-text localization. A Gemini API key is needed only
-when the approved image plan contains paid whole-image edits. The UI shows the
-configured per-image planning estimate and the projected total before approval;
-actual provider billing may differ from this safety estimate.
+The job form accepts credentials for OpenAI-compatible translation, DeepL, and
+optional Gemini image-text localization. Connection settings are remembered in
+browser-local storage and can be cleared from the UI. After submission, secrets
+remain in the in-memory job and are never returned by public job APIs. A Gemini
+API key is needed only when the approved image plan contains paid whole-image
+edits. The UI shows the configured per-image planning estimate and the projected
+total before approval; actual provider billing may differ from this safety
+estimate.
 
 For Moonshot Kimi, select **OpenAI-compatible API** and use:
 

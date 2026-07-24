@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import hashlib
 
+from PIL import Image as PILImage
 from pptx import Presentation
-from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE, MSO_SHAPE_TYPE
+from pptx.util import Inches, Pt
 
 from translayer.parsers.pptx_parser import PptxParser
 from translayer.renderers.pptx_renderer import PptxRenderer
@@ -120,3 +122,156 @@ def test_render_replaces_localized_image(sample_pptx, tmp_path):
     with open(localized_path, "rb") as fh:
         expected_hash = hashlib.md5(fh.read()).hexdigest()
     assert hashlib.md5(pictures[0].image.blob).hexdigest() == expected_hash
+
+
+def test_cropped_picture_is_ocrd_as_visible_area_and_crop_is_reset(tmp_path):
+    source_image = tmp_path / "wide.png"
+    PILImage.new("RGB", (200, 100), "white").save(source_image)
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    picture = slide.shapes.add_picture(
+        str(source_image), Inches(1), Inches(1), Inches(2), Inches(1)
+    )
+    picture.crop_right = 0.25
+    source_pptx = tmp_path / "cropped.pptx"
+    prs.save(source_pptx)
+
+    parser, renderer = PptxParser(), PptxRenderer()
+    ir = parser.parse(
+        str(source_pptx),
+        {"asset_dir": str(tmp_path / "assets")},
+    )
+    image = ir.resources.images[0]
+    assert image.reset_crop_on_render
+    assert (image.width, image.height) == (150, 100)
+
+    localized = tmp_path / "localized.png"
+    PILImage.new("RGB", (150, 100), "red").save(localized)
+    image.localized_data_ref = str(localized)
+    output = tmp_path / "output.pptx"
+    renderer.render(ir, str(source_pptx), str(output))
+
+    output_picture = next(
+        shape
+        for shape in Presentation(output).slides[0].shapes
+        if shape.shape_type == MSO_SHAPE_TYPE.PICTURE
+    )
+    assert output_picture.crop_left == 0
+    assert output_picture.crop_top == 0
+    assert output_picture.crop_right == 0
+    assert output_picture.crop_bottom == 0
+
+
+def test_renderer_keeps_complete_words_and_fits_them_into_text_box(tmp_path):
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    shape = slide.shapes.add_textbox(
+        Inches(1), Inches(1), Inches(1.5), Inches(0.8)
+    )
+    run = shape.text_frame.paragraphs[0].add_run()
+    run.text = "谢谢"
+    run.font.size = Pt(64)
+    source = tmp_path / "fit-source.pptx"
+    prs.save(source)
+
+    parser, renderer = PptxParser(), PptxRenderer()
+    ir = parser.parse(str(source), {"source_lang": "zh", "target_lang": "en"})
+    block = next(block for block in ir.blocks if block.source_text == "谢谢")
+    block.target_text = "Thank you"
+    output = tmp_path / "fit-output.pptx"
+    renderer.render(ir, str(source), str(output))
+
+    output_shape = Presentation(output).slides[0].shapes[0]
+    output_run = output_shape.text_frame.paragraphs[0].runs[0]
+    assert output_shape.text == "Thank you"
+    assert output_run.font.size is not None
+    assert output_run.font.size.pt < 64
+
+
+def test_renderer_fits_text_before_foreground_picture(tmp_path):
+    picture_path = tmp_path / "foreground.png"
+    PILImage.new("RGB", (100, 100), "white").save(picture_path)
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    text_shape = slide.shapes.add_textbox(
+        Inches(1), Inches(1), Inches(8), Inches(1)
+    )
+    text_shape.text = "source"
+    foreground = slide.shapes.add_picture(
+        str(picture_path), Inches(6), Inches(1), Inches(2), Inches(2)
+    )
+
+    visible_width = PptxRenderer._visible_text_width(
+        text_shape,
+        [foreground],
+    )
+
+    assert visible_width == Inches(5)
+
+    source = tmp_path / "occluded-source.pptx"
+    prs.save(source)
+    parser, renderer = PptxParser(), PptxRenderer()
+    ir = parser.parse(
+        str(source),
+        {
+            "source_lang": "en",
+            "target_lang": "de",
+            "asset_dir": str(tmp_path / "occluded-assets"),
+        },
+    )
+    next(block for block in ir.blocks if block.source_text == "source").target_text = (
+        "Complete translated sentence that must remain visible."
+    )
+    output = tmp_path / "occluded-output.pptx"
+    renderer.render(ir, str(source), str(output))
+
+    output_text_shape = Presentation(output).slides[0].shapes[0]
+    assert output_text_shape.width == Inches(5)
+    assert output_text_shape.text.endswith("visible.")
+
+
+def test_renderer_fits_text_inside_background_container(tmp_path):
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    container = slide.shapes.add_shape(
+        MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE,
+        Inches(0.5),
+        Inches(1),
+        Inches(6.5),
+        Inches(1.2),
+    )
+    container.fill.solid()
+    text_shape = slide.shapes.add_textbox(
+        Inches(0.7),
+        Inches(1.2),
+        Inches(8),
+        Inches(0.8),
+    )
+    text_shape.text = "source"
+    visible_width = PptxRenderer._container_text_width(
+        text_shape,
+        list(slide.shapes)[:1],
+    )
+
+    assert visible_width == Inches(6.1)
+
+    source = tmp_path / "container-source.pptx"
+    prs.save(source)
+    parser, renderer = PptxParser(), PptxRenderer()
+    ir = parser.parse(
+        str(source),
+        {
+            "source_lang": "en",
+            "target_lang": "de",
+            "asset_dir": str(tmp_path / "container-assets"),
+        },
+    )
+    next(block for block in ir.blocks if block.source_text == "source").target_text = (
+        "Complete translated sentence that remains inside its colored container."
+    )
+    output = tmp_path / "container-output.pptx"
+    renderer.render(ir, str(source), str(output))
+
+    output_text_shape = Presentation(output).slides[0].shapes[1]
+    assert output_text_shape.width == Inches(6.1)
+    assert output_text_shape.text.endswith("container.")

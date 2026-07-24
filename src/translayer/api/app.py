@@ -38,7 +38,7 @@ from translayer.localize.whole_image_quality import (
 from translayer.pipeline import enrich_document, parse_document, render_document
 from translayer.plugins import registry
 
-app = FastAPI(title="Translayer", version="0.2.2")
+app = FastAPI(title="Translayer", version="0.2.3")
 store = JobStore()
 
 _WEB_DIR = os.path.join(os.path.dirname(__file__), "..", "web")

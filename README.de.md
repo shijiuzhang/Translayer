@@ -1,4 +1,4 @@
-# Translayer (v0.2.2)
+# Translayer (v0.2.3)
 
 [English](README.md) | [简体中文](README.zh-CN.md) | Deutsch
 
@@ -10,17 +10,20 @@
 
 Translayer ist eine KI-native Zwischenschicht für die Dokumentlokalisierung. PPTX-, DOCX- und HTML-Dateien werden in ein einheitliches `DocumentIR` überführt, mit Layout-, Terminologie- und OCR-Daten angereichert, in einem überprüfbaren Workflow lokalisiert und anschließend in das ursprüngliche Format zurückgeschrieben. Neben normalem Dokumenttext kann Translayer auch Text in Bildern erkennen und bearbeiten.
 
-## Neu in v0.2.2
+## Neu in v0.2.3
 
-- Während der Textübersetzung werden die aktuelle Folie, abgeschlossene Folien
-  und Textblöcke angezeigt.
-- Nach Freigabe des Bildplans werden fertige Bilder und der aktuelle OCR-,
-  Übersetzungs-, Inpainting-, Neuzeichnungs-, Generierungs-, Wiederverwendungs-
-  oder Prüfschritt angezeigt.
-- Die OpenAI-kompatible Engine unterstützt Moonshot Kimi K2.5/K2.6, deaktiviert
-  Thinking automatisch und sendet nicht den inkompatiblen Wert `temperature: 0`.
-- HTTP-Fehler enthalten die Antwort des Anbieters, damit Authentifizierungs-,
-  Modell- und Parameterfehler nachvollziehbar sind.
+- Lokales Tesseract-OCR vergrößert kleine Screenshots, filtert Rauschen, führt
+  umgebrochene Zeilen zusammen und entfernt Text zeilenweise.
+- Dichte reine Text-Screenshots können als saubere zielsprachliche Textfläche
+  neu aufgebaut und bei Bedarf vertikal erweitert werden.
+- Übersetzungen bleiben vollständig; die Layout-Anpassung erzeugt keine
+  abgeschnittenen Wörter mehr.
+- PPTX-Text bleibt innerhalb von Bildern und visuellen Panelgrenzen.
+- Bereits vorhandener zweisprachiger Zieltext bleibt erhalten, während ein
+  passendes benachbartes Ausgangssprachen-Duplikat entfernt wird.
+- API-Adressen, Schlüssel, Modelle und Engine-Auswahl bleiben im aktuellen
+  Browser gespeichert und können in allen drei Oberflächensprachen gelöscht
+  werden.
 
 ## Hauptfunktionen
 
@@ -35,7 +38,8 @@ Translayer ist eine KI-native Zwischenschicht für die Dokumentlokalisierung. PP
 - Beliebige OpenAI-kompatible Chat-Completions-Endpunkte, einschließlich lokaler und interner APIs.
 - Kompatible Request-Parameter für Moonshot Kimi K2.5/K2.6.
 - DeepL Free und Pro.
-- Auftragsbezogene Zugangsdaten für OpenAI-kompatible APIs, DeepL und Gemini.
+- Wiederverwendbare, browserlokale Zugangsdaten für OpenAI-kompatible APIs,
+  DeepL und Gemini mit einer Funktion zum Löschen.
 - Messbarer Fortschritt für lange Text- und Bildaufträge.
 
 ## Ablauf
@@ -197,7 +201,11 @@ Wichtige Umgebungsvariablen:
 | `TRANSLAYER_IMAGE_ESTIMATED_COST_USD` | Planungswert pro Bildaufruf |
 | `TRANSLAYER_IMAGE_CACHE_DIR` | Cache für Gemini-Bilder |
 
-Auftragsbezogene Werte aus der Weboberfläche haben Vorrang. Geheimnisse bleiben im Auftragsobjekt des laufenden Serverprozesses und werden weder in `DocumentIR` noch in öffentlichen API-Antworten gespeichert.
+Werte aus der Weboberfläche haben Vorrang. Verbindungsdaten werden im lokalen
+Browserspeicher wiederverwendbar gehalten und können über die Oberfläche
+gelöscht werden. Nach dem Absenden bleiben Geheimnisse im Auftragsobjekt des
+laufenden Serverprozesses und werden weder in `DocumentIR` noch in öffentlichen
+API-Antworten gespeichert.
 
 ## Bekannte Einschränkungen
 

@@ -7,11 +7,13 @@ translation back losslessly into the original file.
 
 from __future__ import annotations
 
+import io
 import os
 import tempfile
 import xml.etree.ElementTree as ET
 from typing import Any
 
+from PIL import Image
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.util import Emu
@@ -225,9 +227,14 @@ class PptxParser:
         img_id = f"s{slide_index}-sh{shape.shape_id}-img"
         ext = image.ext or "png"
         out_path = os.path.join(asset_dir, f"{img_id}.{ext}")
+        blob = image.blob
         with open(out_path, "wb") as fh:
-            fh.write(image.blob)
+            fh.write(blob)
         px_w, px_h = image.size if image.size else (0, 0)
+        reset_crop = self._extract_visible_crop(shape, blob, out_path)
+        if reset_crop:
+            with Image.open(out_path) as visible:
+                px_w, px_h = visible.size
         doc.resources.images.append(
             ImageResource(
                 id=img_id,
@@ -235,6 +242,7 @@ class PptxParser:
                 data_ref=out_path,
                 width=int(px_w),
                 height=int(px_h),
+                reset_crop_on_render=reset_crop,
             )
         )
         # An image is also a block so the pipeline can address it for rendering.
@@ -257,6 +265,28 @@ class PptxParser:
                 ),
             )
         )
+
+    @staticmethod
+    def _extract_visible_crop(shape, blob: bytes, out_path: str) -> bool:
+        crop = (
+            float(getattr(shape, "crop_left", 0.0) or 0.0),
+            float(getattr(shape, "crop_top", 0.0) or 0.0),
+            float(getattr(shape, "crop_right", 0.0) or 0.0),
+            float(getattr(shape, "crop_bottom", 0.0) or 0.0),
+        )
+        if not any(value > 0.00001 for value in crop):
+            return False
+        try:
+            with Image.open(io.BytesIO(blob)) as source:
+                left = max(0, min(source.width - 1, round(source.width * crop[0])))
+                top = max(0, min(source.height - 1, round(source.height * crop[1])))
+                right = max(left + 1, min(source.width, round(source.width * (1 - crop[2]))))
+                bottom = max(top + 1, min(source.height, round(source.height * (1 - crop[3]))))
+                visible = source.crop((left, top, right, bottom))
+                visible.save(out_path)
+        except (OSError, ValueError):
+            return False
+        return True
 
     # ------------------------------------------------------------------ #
     # SmartArt (diagram) support

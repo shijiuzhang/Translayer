@@ -106,3 +106,17 @@ def test_tesseract_accepts_decimal_confidence_values() -> None:
     }
 
     assert TesseractOCREngine(lang="deu+eng")._group_words_by_line(data) == [[0]]
+
+
+def test_tesseract_ignores_symbol_only_and_low_confidence_tokens() -> None:
+    data = {
+        "text": ["+", "可信文字", "噪声"],
+        "conf": ["99", "88", "20"],
+        "block_num": [1, 1, 1],
+        "par_num": [1, 1, 1],
+        "line_num": [1, 1, 1],
+        "left": [0, 20, 80],
+        "height": [10, 10, 10],
+    }
+
+    assert TesseractOCREngine(lang="chi_sim+eng")._group_words_by_line(data) == [[1]]

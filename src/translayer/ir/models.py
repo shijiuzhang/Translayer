@@ -124,6 +124,7 @@ class ImageTextRegion(BaseModel):
     id: str
     bbox: Position
     polygon: list[tuple[int, int]] | None = None
+    erase_boxes: list[Position] = Field(default_factory=list)
     source_text: str
     target_text: str | None = None
     font_estimate: Font = Field(default_factory=Font)
@@ -173,6 +174,7 @@ class ImageResource(BaseModel):
     data_ref: str  # path to the extracted original image
     width: int
     height: int
+    reset_crop_on_render: bool = False
     text_regions: list[ImageTextRegion] = Field(default_factory=list)
     selection: ImageSelectionAnalysis | None = None
     localized_data_ref: str | None = None  # path to re-drawn localized image

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from math import ceil
+from statistics import median
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -41,6 +43,15 @@ def wrap_text(
     draw: ImageDraw.ImageDraw,
 ) -> list[str]:
     """Greedy wrap spaced text; fall back to character wrapping for CJK/no-space text."""
+    if "\n" in (text or ""):
+        lines: list[str] = []
+        for paragraph in text.splitlines():
+            if not paragraph.strip():
+                lines.append("")
+                continue
+            lines.extend(wrap_text(paragraph, font, max_width, draw))
+        return lines or [""]
+
     normalized = " ".join((text or "").split())
     if not normalized:
         return [""]
@@ -70,6 +81,18 @@ def wrap_text(
     return lines
 
 
+def _latin_words_fit(
+    text: str,
+    font: ImageFont.FreeTypeFont,
+    max_width: int,
+    draw: ImageDraw.ImageDraw,
+) -> bool:
+    if _CJK_RE.search(text or ""):
+        return True
+    words = (text or "").replace("\n", " ").split()
+    return not words or max(_text_width(word, font, draw) for word in words) <= max_width
+
+
 def _block_size(
     lines: Sequence[str],
     font: ImageFont.FreeTypeFont,
@@ -93,7 +116,7 @@ def fit_text(
     box_h: int,
     font_path: str,
     max_size: int,
-    min_size: int = 8,
+    min_size: int = 5,
 ) -> tuple[int, list[str]]:
     """Return the largest font size whose wrapped text block fits the box."""
     probe = Image.new("RGB", (max(1, box_w), max(1, box_h)), "white")
@@ -108,7 +131,11 @@ def fit_text(
         font = ImageFont.truetype(font_path, size=size)
         lines = wrap_text(text, font, box_w, draw)
         width, height = _block_size(lines, font, draw, spacing=_line_spacing(size))
-        if width <= box_w and height <= box_h:
+        if (
+            width <= box_w
+            and height <= box_h
+            and _latin_words_fit(text, font, box_w, draw)
+        ):
             best_size = size
             best_lines = lines
             low = size + 1
@@ -122,24 +149,174 @@ def fit_text(
     return best_size, wrap_text(text, font, box_w, draw)
 
 
-def render_text_in_box(img: Image.Image, region: ImageTextRegion, lang: str | None = None) -> None:
+def text_fits_in_box(
+    text: str,
+    box_w: int,
+    box_h: int,
+    font_path: str,
+    max_size: int,
+    min_size: int = 5,
+) -> bool:
+    """Return whether text can be rendered without escaping the target box."""
+    size, lines = fit_text(
+        text,
+        box_w,
+        box_h,
+        font_path,
+        max_size=max_size,
+        min_size=min_size,
+    )
+    probe = Image.new("RGB", (max(1, box_w), max(1, box_h)), "white")
+    draw = ImageDraw.Draw(probe)
+    font = ImageFont.truetype(font_path, size=size)
+    width, height = _block_size(lines, font, draw, spacing=_line_spacing(size))
+    return width <= box_w and height <= box_h
+
+
+def region_text_fits(region: ImageTextRegion, lang: str | None = None) -> bool:
+    text = region.target_text or region.source_text
+    if not text:
+        return True
+    box_w = max(0, int(region.bbox.w))
+    box_h = max(0, int(region.bbox.h))
+    if box_w == 0 or box_h == 0:
+        return False
+    resolved_lang = lang or ("zh" if _CJK_RE.search(text) else "en")
+    font_path = FontRegistry().font_for_lang(resolved_lang)
+    estimated_size = region.font_estimate.size or min(box_h, 32)
+    return text_fits_in_box(
+        text,
+        box_w,
+        box_h,
+        font_path,
+        max_size=max(5, int(round(estimated_size))),
+    )
+
+
+def render_text_canvas(
+    size: tuple[int, int],
+    regions: Sequence[ImageTextRegion],
+    lang: str,
+) -> Image.Image:
+    """Reflow dense OCR translations onto a clean canvas.
+
+    This is intended for screenshots whose meaningful content is the text
+    itself. It avoids preserving missed source glyphs and gives longer target
+    languages the full image area instead of the original per-line boxes.
+    """
+    width, height = size
+    texts = [
+        region.target_text.strip()
+        for region in regions
+        if region.target_text and region.target_text.strip()
+    ]
+    if not texts:
+        return Image.new("RGB", size, (248, 249, 251))
+
+    registry = FontRegistry()
+    font_path = registry.font_for_lang(lang)
+    source_sizes = [
+        region.font_estimate.size
+        for region in regions
+        if region.font_estimate.size and region.font_estimate.size > 0
+    ]
+    max_size = max(14, min(36, int(round(median(source_sizes))) if source_sizes else 24))
+    padding = max(10, int(round(min(width, height) * 0.035)))
+    gap = max(12, padding)
+    columns = _text_canvas_columns(width, height, sum(len(text) for text in texts))
+    column_width = max(1, (width - 2 * padding - (columns - 1) * gap) // columns)
+    content_height = max(1, height - 2 * padding)
+
+    size_px, lines, line_height, required_height = _fit_canvas_lines(
+        texts,
+        font_path,
+        column_width,
+        content_height,
+        columns,
+        max_size=max_size,
+    )
+    canvas_height = max(height, required_height + 2 * padding)
+    image = Image.new("RGB", (width, canvas_height), (248, 249, 251))
+    font = ImageFont.truetype(font_path, size=size_px)
+    draw = ImageDraw.Draw(image)
+    lines_per_column = max(1, ceil(len(lines) / columns))
+    for index, line in enumerate(lines):
+        column = min(columns - 1, index // lines_per_column)
+        row = index % lines_per_column
+        x = padding + column * (column_width + gap)
+        y = padding + row * line_height
+        draw.text((x, y), line, font=font, fill=(22, 27, 34))
+    return image
+
+
+def _text_canvas_columns(width: int, height: int, text_length: int) -> int:
+    ratio = width / max(1, height)
+    if ratio >= 4.0 and text_length >= 200:
+        return 3
+    if ratio >= 1.8 and text_length >= 100:
+        return 2
+    return 1
+
+
+def _fit_canvas_lines(
+    texts: Sequence[str],
+    font_path: str,
+    column_width: int,
+    content_height: int,
+    columns: int,
+    *,
+    max_size: int,
+    min_size: int = 3,
+) -> tuple[int, list[str], int, int]:
+    probe = Image.new("RGB", (max(1, column_width), max(1, content_height)), "white")
+    draw = ImageDraw.Draw(probe)
+    best: tuple[int, list[str], int] | None = None
+    for size in range(max_size, min_size - 1, -1):
+        font = ImageFont.truetype(font_path, size=size)
+        lines: list[str] = []
+        for text in texts:
+            lines.extend(wrap_text(text, font, column_width, draw))
+        line_height = max(
+            1,
+            draw.textbbox((0, 0), "Ag", font=font)[3]
+            - draw.textbbox((0, 0), "Ag", font=font)[1]
+            + _line_spacing(size),
+        )
+        capacity = max(1, content_height // line_height) * columns
+        words_fit = all(
+            _latin_words_fit(text, font, column_width, draw) for text in texts
+        )
+        if len(lines) <= capacity and words_fit:
+            return size, lines, line_height, content_height
+        best = (size, lines, line_height)
+    assert best is not None
+    size, lines, line_height = best
+    required_height = ceil(len(lines) / columns) * line_height
+    return size, lines, line_height, required_height
+
+
+def render_text_in_box(
+    img: Image.Image, region: ImageTextRegion, lang: str | None = None
+) -> bool:
     """Render translated region text into its bbox with real-font wrapping and shrink-to-fit."""
     text = region.target_text or region.source_text
     if not text:
-        return
+        return True
 
     bbox = region.bbox
     box_w = max(0, int(bbox.w))
     box_h = max(0, int(bbox.h))
     if box_w == 0 or box_h == 0:
-        return
+        return False
 
     resolved_lang = lang or ("zh" if _CJK_RE.search(text) else "en")
     registry = FontRegistry()
     font_path = registry.font_for_lang(resolved_lang)
     estimated_size = region.font_estimate.size or min(box_h, 32)
-    max_size = max(8, int(round(estimated_size)))
+    max_size = max(5, int(round(estimated_size)))
     size, lines = fit_text(text, box_w, box_h, font_path, max_size=max_size)
+    if not text_fits_in_box(text, box_w, box_h, font_path, max_size=max_size):
+        return False
     font = ImageFont.truetype(font_path, size=size)
 
     overlay = Image.new("RGBA", (box_w, box_h), (255, 255, 255, 0))
@@ -165,6 +342,7 @@ def render_text_in_box(img: Image.Image, region: ImageTextRegion, lang: str | No
         img.alpha_composite(overlay, (int(bbox.x), int(bbox.y)))
     else:
         img.paste(Image.alpha_composite(img.crop((bbox.x, bbox.y, bbox.x + box_w, bbox.y + box_h)).convert("RGBA"), overlay).convert(img.mode), (int(bbox.x), int(bbox.y)))
+    return True
 
 
 def _parse_color(color: str | None) -> tuple[int, int, int, int]:

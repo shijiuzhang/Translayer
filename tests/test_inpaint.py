@@ -52,5 +52,38 @@ def test_inpaint_engines_are_registered() -> None:
     assert "lama" in available
 
 
+def test_pillow_engine_uses_line_erase_boxes_instead_of_paragraph_bbox(
+    tmp_path: Path,
+) -> None:
+    image_path = tmp_path / "source.png"
+    out_path = tmp_path / "erased.png"
+    image = Image.new("RGB", (100, 70), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((10, 10, 89, 59), fill=(220, 220, 220))
+    draw.rectangle((15, 15, 84, 24), fill=(0, 0, 0))
+    draw.rectangle((15, 45, 84, 54), fill=(0, 0, 0))
+    image.save(image_path)
+    region = ImageTextRegion(
+        id="r1",
+        bbox=Position(x=10, y=10, w=80, h=50),
+        erase_boxes=[
+            Position(x=15, y=15, w=70, h=10),
+            Position(x=15, y=45, w=70, h=10),
+        ],
+        source_text="two lines",
+        background_kind="solid",
+    )
+
+    registry.discover()
+    registry.get("inpaint", "pillow").erase(
+        str(image_path), [region], str(out_path)
+    )
+
+    erased = Image.open(out_path).convert("RGB")
+    assert erased.getpixel((50, 20)) != (0, 0, 0)
+    assert erased.getpixel((50, 50)) != (0, 0, 0)
+    assert erased.getpixel((50, 35)) == (220, 220, 220)
+
+
 def _region(bbox: Position) -> ImageTextRegion:
     return ImageTextRegion(id="r1", bbox=bbox, source_text="text", background_kind="solid")

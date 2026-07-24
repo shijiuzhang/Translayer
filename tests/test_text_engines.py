@@ -47,13 +47,12 @@ def test_mock_engine_glossary_applied():
     assert result == ["[zh] 你好 world"]
 
 
-def test_mock_engine_max_chars_respected():
+def test_mock_engine_preserves_complete_text_when_layout_limit_is_shorter():
     engine = registry.get("translation", "mock")
 
     result = engine.translate(["abcdef", "abcdef"], "en", "zh", max_chars=[5, None])
 
-    assert result == ["[zh] ", "[zh] abcdef"]
-    assert len(result[0]) <= 5
+    assert result == ["[zh] abcdef", "[zh] abcdef"]
 
 
 def test_registry_get_mock_returns_working_engine():
@@ -113,6 +112,31 @@ def test_openai_compatible_engine_allows_authless_local_api(monkeypatch):
 
     assert engine.translate(["Hello"], "en", "de") == ["Hallo"]
     assert calls[0][1]["headers"] == {}
+
+
+def test_openai_compatible_engine_never_hard_truncates_model_output(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "translayer.engines.translation.openai_engine.httpx.Client",
+        lambda **kwargs: _FakeClient(
+            {"choices": [{"message": {"content": '["collaboration"]'}}]},
+            calls,
+            **kwargs,
+        ),
+    )
+    engine = registry.get(
+        "translation",
+        "openai",
+        base_url="http://localhost:11434/v1",
+        api_key="",
+        model="example-model",
+    )
+
+    assert engine.translate(["合作"], "zh", "en", max_chars=[8]) == [
+        "collaboration"
+    ]
+    prompt = calls[0][1]["json"]["messages"][1]["content"]
+    assert "Never cut a word" in prompt
 
 
 def test_openai_compatible_engine_adapts_moonshot_kimi_reasoning_model(monkeypatch):

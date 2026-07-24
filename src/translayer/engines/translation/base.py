@@ -55,8 +55,10 @@ class BaseTranslationEngine(ABC):
         ]
         if constraints:
             parts.append(
-                "Respect these per-item maximum translated character counts:\n"
+                "Aim for these per-item translated character counts when natural:\n"
                 f"{json.dumps(constraints, ensure_ascii=False)}"
+                "\nTreat these as layout guidance. Never cut a word, return a fragment, "
+                "or omit required meaning just to meet a character count."
             )
         parts.append(json.dumps(texts, ensure_ascii=False))
         return "\n\n".join(parts)
@@ -89,12 +91,14 @@ class BaseTranslationEngine(ABC):
     def enforce_max_chars(
         self, texts: list[str], max_chars: list[int | None] | None
     ) -> list[str]:
-        """Truncate strings with configured per-item maximum lengths."""
-        limits = self.normalize_max_chars(len(texts), max_chars)
-        return [
-            text if limit is None else text[: max(0, limit)]
-            for text, limit in zip(texts, limits, strict=True)
-        ]
+        """Keep complete translations; character limits are prompt-level guidance.
+
+        Cutting by Python string index produced broken words such as
+        ``collaborati`` and discarded meaning before human review. Layout fitting
+        is responsible for adapting complete translations to their containers.
+        """
+        self.normalize_max_chars(len(texts), max_chars)
+        return list(texts)
 
     @staticmethod
     def chunk_batch(items: list[T], chunk_size: int) -> list[list[T]]:

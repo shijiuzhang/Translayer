@@ -19,6 +19,8 @@ from translayer.fonts import layout as font_layout
 from translayer.ir.models import DocumentIR, ImageResource
 from translayer.plugins import registry
 
+_TEXT_CANVAS_MIN_CHARS = 40
+
 
 def _verify_region(_image_path: str, _region) -> bool:
     """VLM self-check stub — always passes for the MVP."""
@@ -85,18 +87,37 @@ def _localize_one(
     for region, translated in zip(regions, translations, strict=False):
         region.target_text = translated
 
+    if _use_text_canvas(regions):
+        if progress_callback:
+            progress_callback("redrawing", image)
+        with Image.open(image.data_ref) as source:
+            canvas = font_layout.render_text_canvas(source.size, regions, lang=tgt)
+        base, ext = os.path.splitext(image.data_ref)
+        out_path = f"{base}.localized{ext or '.png'}"
+        canvas.save(out_path)
+        image.localized_data_ref = out_path
+        if progress_callback:
+            progress_callback("completed", image)
+        return
+
+    renderable_regions = [
+        region for region in regions if font_layout.region_text_fits(region, lang=tgt)
+    ]
+    if not renderable_regions:
+        return
+
     # 2. Erase original text.
     if progress_callback:
         progress_callback("inpainting", image)
     base, ext = os.path.splitext(image.data_ref)
     erased_path = f"{base}.erased{ext or '.png'}"
-    inpainter.erase(image.data_ref, regions, erased_path)
+    inpainter.erase(image.data_ref, renderable_regions, erased_path)
 
     # 3. Redraw translations with a real font sized to fit each region.
     if progress_callback:
         progress_callback("redrawing", image)
     img = Image.open(erased_path).convert("RGB")
-    for region in regions:
+    for region in renderable_regions:
         font_layout.render_text_in_box(img, region, lang=tgt)
         _verify_region(erased_path, region)
 
@@ -105,3 +126,13 @@ def _localize_one(
     image.localized_data_ref = out_path
     if progress_callback:
         progress_callback("completed", image)
+
+
+def _use_text_canvas(regions) -> bool:
+    """Use clean reflow for text-rich screenshots chosen for local OCR."""
+    text_chars = sum(
+        character.isalnum()
+        for region in regions
+        for character in region.source_text
+    )
+    return text_chars >= _TEXT_CANVAS_MIN_CHARS

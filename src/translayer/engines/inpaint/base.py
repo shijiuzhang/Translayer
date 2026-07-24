@@ -7,7 +7,7 @@ from statistics import median
 
 from PIL import Image, ImageDraw
 
-from translayer.ir.models import ImageTextRegion
+from translayer.ir.models import ImageTextRegion, Position
 
 
 class BaseInpaintEngine(ABC):
@@ -34,26 +34,34 @@ class BaseInpaintEngine(ABC):
                     draw.polygon(points, fill=255)
                 continue
 
-            left, top, right, bottom = BaseInpaintEngine._bbox_bounds(region, size)
-            if right > left and bottom > top:
-                draw.rectangle((left, top, right - 1, bottom - 1), fill=255)
+            for box in BaseInpaintEngine._erase_boxes(region):
+                left, top, right, bottom = BaseInpaintEngine._position_bounds(box, size)
+                if right > left and bottom > top:
+                    draw.rectangle((left, top, right - 1, bottom - 1), fill=255)
         return mask
 
     @staticmethod
     def _fill_solid(img: Image.Image, region: ImageTextRegion) -> None:
         """Fill a region bbox with the estimated surrounding background color."""
-        left, top, right, bottom = BaseInpaintEngine._bbox_bounds(region, img.size)
-        if right <= left or bottom <= top:
-            return
-
-        color = BaseInpaintEngine._surrounding_color(img, left, top, right, bottom)
         draw = ImageDraw.Draw(img)
-        draw.rectangle((left, top, right - 1, bottom - 1), fill=color)
+        for box in BaseInpaintEngine._erase_boxes(region):
+            left, top, right, bottom = BaseInpaintEngine._position_bounds(box, img.size)
+            if right <= left or bottom <= top:
+                continue
+            color = BaseInpaintEngine._surrounding_color(img, left, top, right, bottom)
+            draw.rectangle((left, top, right - 1, bottom - 1), fill=color)
+
+    @staticmethod
+    def _erase_boxes(region: ImageTextRegion) -> list[Position]:
+        return region.erase_boxes or [region.bbox]
 
     @staticmethod
     def _bbox_bounds(region: ImageTextRegion, size: tuple[int, int]) -> tuple[int, int, int, int]:
+        return BaseInpaintEngine._position_bounds(region.bbox, size)
+
+    @staticmethod
+    def _position_bounds(box: Position, size: tuple[int, int]) -> tuple[int, int, int, int]:
         width, height = size
-        box = region.bbox
         left = max(0, min(width, int(box.x)))
         top = max(0, min(height, int(box.y)))
         right = max(0, min(width, int(box.x + box.w)))

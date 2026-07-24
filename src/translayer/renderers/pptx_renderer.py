@@ -13,7 +13,10 @@ import xml.etree.ElementTree as ET
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.enum.text import MSO_AUTO_SIZE
+from pptx.util import Pt
 
+from translayer.fonts.layout import fit_text
+from translayer.fonts.registry import FontRegistry
 from translayer.ir.models import Block, DocumentIR
 from translayer.languages import pptx_language_tag
 from translayer.plugins import registry
@@ -42,9 +45,20 @@ class PptxRenderer:
 
         # Index shapes by (slide_index, shape_id) including nested groups.
         shape_index: dict[tuple[int, int], object] = {}
+        visible_text_widths: dict[tuple[int, int], int] = {}
         for s_idx, slide in enumerate(prs.slides):
-            for shape in slide.shapes:
+            shapes = list(slide.shapes)
+            for shape_index_on_slide, shape in enumerate(shapes):
                 self._index_shape(shape, s_idx, shape_index)
+                if getattr(shape, "has_text_frame", False):
+                    visible_text_widths[(s_idx, int(shape.shape_id))] = min(
+                        self._visible_text_width(
+                            shape, shapes[shape_index_on_slide + 1 :]
+                        ),
+                        self._container_text_width(
+                            shape, shapes[:shape_index_on_slide]
+                        ),
+                    )
 
         images = {im.id: im for im in ir.resources.images}
         # Cache loaded SmartArt data parts and their XML roots so multiple
@@ -65,10 +79,15 @@ class PptxRenderer:
                 continue
             if block.target_text is None:
                 continue
+            if block.target_text == block.source_text:
+                continue
             self._render_text_block(
                 block,
                 shape_index,
                 target_lang=ir.meta.target_lang,
+                fit_width_emu=visible_text_widths.get(
+                    (block.source_ref.slide_index, block.source_ref.shape_id)
+                ),
             )
 
         # Persist any modified SmartArt data parts.
@@ -84,11 +103,19 @@ class PptxRenderer:
             return
         index[(slide_index, int(shape.shape_id))] = shape
 
-    def _render_text_block(self, block: Block, index, target_lang: str) -> None:
+    def _render_text_block(
+        self,
+        block: Block,
+        index,
+        target_lang: str,
+        fit_width_emu: int | None = None,
+    ) -> None:
         ref = block.source_ref
         shape = index.get((ref.slide_index, ref.shape_id))
         if shape is None:
             return
+        if fit_width_emu and fit_width_emu < int(shape.width):
+            shape.width = fit_width_emu
 
         if ref.kind == "table_cell":
             if not shape.has_table:
@@ -114,7 +141,12 @@ class PptxRenderer:
             language_tag=pptx_language_tag(target_lang),
             target_lang=target_lang,
         )
-        self._apply_overflow(shape, block)
+        self._apply_overflow(
+            tf,
+            block,
+            target_lang,
+            fit_width_emu=fit_width_emu,
+        )
 
     @staticmethod
     def _set_paragraph_text(
@@ -149,15 +181,135 @@ class PptxRenderer:
         properties.append(east_asian)
 
     @staticmethod
-    def _apply_overflow(shape, block: Block) -> None:
+    def _apply_overflow(
+        text_frame,
+        block: Block,
+        target_lang: str,
+        *,
+        fit_width_emu: int | None = None,
+    ) -> None:
         if not block.constraints.can_shrink_font:
             return
         try:
-            tf = shape.text_frame
-            tf.word_wrap = True
-            tf.auto_size = MSO_AUTO_SIZE.SHRINK_TEXT_ON_OVERFLOW
-        except (AttributeError, ValueError):
+            text_frame.word_wrap = True
+            text_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+            if not text_frame.text:
+                return
+
+            source_font = block.runs[0].font if block.runs else None
+            max_size = (
+                source_font.size
+                if source_font and source_font.size
+                else block.layout.base_font.size
+                if block.layout and block.layout.base_font.size
+                else 32.0
+            )
+            font_file = FontRegistry().font_for_lang(target_lang)
+            position = block.layout.position if block.layout else None
+            if position is None or block.source_ref.kind == "table_cell":
+                return
+            horizontal_margins = int(text_frame.margin_left or 0) + int(
+                text_frame.margin_right or 0
+            )
+            vertical_margins = int(text_frame.margin_top or 0) + int(
+                text_frame.margin_bottom or 0
+            )
+            box_w_px = max(
+                1,
+                int(
+                    round(
+                        ((fit_width_emu or position.w) - horizontal_margins)
+                        / 12700
+                        * 96
+                        / 72
+                    )
+                ),
+            )
+            box_h_px = max(
+                1,
+                int(round((position.h - vertical_margins) / 12700 * 96 / 72)),
+            )
+            max_size_px = max(1, int(round(max_size * 96 / 72)))
+            min_size_px = min(
+                max_size_px,
+                max(4, int(round(block.constraints.min_font_size * 96 / 72))),
+            )
+            best_size_px, _ = fit_text(
+                text_frame.text,
+                box_w_px,
+                box_h_px,
+                font_file,
+                max_size=max_size_px,
+                min_size=min_size_px,
+            )
+            best_size = best_size_px * 72 / 96
+            for paragraph in text_frame.paragraphs:
+                for run in paragraph.runs:
+                    if run.text:
+                        run.font.size = Pt(best_size)
+            text_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+        except (AttributeError, OSError, TypeError, ValueError):
             pass
+
+    @staticmethod
+    def _visible_text_width(shape, foreground_shapes) -> int:
+        """Return text width before a foreground picture obscures its right side."""
+        left = int(shape.left)
+        top = int(shape.top)
+        right = left + int(shape.width)
+        bottom = top + int(shape.height)
+        visible_right = right
+        for foreground in foreground_shapes:
+            if foreground.shape_type != MSO_SHAPE_TYPE.PICTURE:
+                continue
+            foreground_left = int(foreground.left)
+            foreground_top = int(foreground.top)
+            foreground_bottom = foreground_top + int(foreground.height)
+            vertical_overlap = max(
+                0,
+                min(bottom, foreground_bottom) - max(top, foreground_top),
+            )
+            if vertical_overlap < min(int(shape.height), int(foreground.height)) * 0.25:
+                continue
+            if left < foreground_left < visible_right:
+                visible_right = foreground_left
+        visible_width = visible_right - left
+        return visible_width if visible_width >= int(shape.width) * 0.25 else int(shape.width)
+
+    @staticmethod
+    def _container_text_width(shape, background_shapes) -> int:
+        """Fit text inside the nearest filled shape that visually contains it."""
+        left = int(shape.left)
+        top = int(shape.top)
+        right = left + int(shape.width)
+        bottom = top + int(shape.height)
+        for background in reversed(background_shapes):
+            if background.shape_type != MSO_SHAPE_TYPE.AUTO_SHAPE:
+                continue
+            if getattr(background, "has_text_frame", False) and background.text.strip():
+                continue
+            try:
+                if background.fill.type is None:
+                    continue
+            except (AttributeError, ValueError):
+                continue
+            background_left = int(background.left)
+            background_top = int(background.top)
+            background_right = background_left + int(background.width)
+            background_bottom = background_top + int(background.height)
+            if not (
+                background_left <= left
+                and background_top <= top
+                and background_bottom >= bottom
+                and left < background_right < right
+            ):
+                continue
+            left_inset = left - background_left
+            inner_right = background_right - left_inset
+            container_width = inner_right - left
+            if container_width >= int(shape.width) * 0.25:
+                return container_width
+        return int(shape.width)
 
     def _render_image(self, block: Block, index, images) -> None:
         ref = block.source_ref
@@ -173,6 +325,11 @@ class PptxRenderer:
             with open(res.localized_data_ref, "rb") as fh:
                 new_blob = fh.read()
             self._replace_image_blob(shape, new_blob)
+            if res.reset_crop_on_render:
+                shape.crop_left = 0
+                shape.crop_top = 0
+                shape.crop_right = 0
+                shape.crop_bottom = 0
         except (AttributeError, OSError, KeyError, ValueError):
             pass
 

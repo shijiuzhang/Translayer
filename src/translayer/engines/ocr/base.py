@@ -38,6 +38,7 @@ class BaseOCREngine(ABC):
         image_path = kw.pop("image_path", None)
         bbox = Position(x=int(round(x)), y=int(round(y)), w=int(round(w)), h=int(round(h)))
         polygon = kw.pop("polygon", None)
+        erase_boxes = kw.pop("erase_boxes", [])
         align: Align = kw.pop("align", "left")
         target_text = kw.pop("target_text", None)
         translatable = kw.pop("translatable", True)
@@ -63,6 +64,7 @@ class BaseOCREngine(ABC):
             id=f"reg{idx}",
             bbox=bbox,
             polygon=polygon,
+            erase_boxes=erase_boxes,
             source_text=text,
             target_text=target_text,
             font_estimate=font_estimate,
