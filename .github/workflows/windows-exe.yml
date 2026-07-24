@@ -29,12 +29,22 @@ jobs:
         shell: pwsh
         run: |
           choco install tesseract -y --no-progress
-          choco install poppler -y --no-progress
           "C:\Program Files\Tesseract-OCR" >> $env:GITHUB_PATH
-          $popplerRoots = @("C:\ProgramData\chocolatey\lib\poppler", "C:\tools") | Where-Object { Test-Path $_ }
-          $pdftoppm = Get-ChildItem -Path $popplerRoots -Recurse -Filter pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+
+          $popplerRelease = Invoke-RestMethod `
+            -Headers @{ "User-Agent" = "Translayer-CI" } `
+            -Uri "https://api.github.com/repos/oschwartz10612/poppler-windows/releases/latest"
+          $popplerAsset = $popplerRelease.assets |
+            Where-Object { $_.name -match '\.zip$' -and $_.name -match '^Release-' } |
+            Select-Object -First 1
+          if (-not $popplerAsset) { throw "No Poppler Windows release zip found" }
+          $popplerArchive = Join-Path $env:RUNNER_TEMP "poppler-windows.zip"
+          $popplerRoot = Join-Path $env:RUNNER_TEMP "poppler-windows"
+          Invoke-WebRequest -Uri $popplerAsset.browser_download_url -OutFile $popplerArchive
+          Expand-Archive -Path $popplerArchive -DestinationPath $popplerRoot -Force
+          $pdftoppm = Get-ChildItem -Path $popplerRoot -Recurse -Filter pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $pdftoppm) {
-            Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\poppler" -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object FullName
+            Get-ChildItem -Path $popplerRoot -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object FullName
             throw "pdftoppm.exe not found after installing poppler"
           }
           $pdftoppm.Directory.FullName >> $env:GITHUB_PATH
@@ -83,8 +93,8 @@ jobs:
             }
           }
 
-          $popplerRoots = @("C:\ProgramData\chocolatey\lib\poppler", "C:\tools") | Where-Object { Test-Path $_ }
-          $pdftoppm = Get-ChildItem -Path $popplerRoots -Recurse -Filter pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          $popplerRoot = Join-Path $env:RUNNER_TEMP "poppler-windows"
+          $pdftoppm = Get-ChildItem -Path $popplerRoot -Recurse -Filter pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $pdftoppm) { throw "pdftoppm.exe not found after installing poppler" }
           $popplerTarget = "$packageDir\tools\poppler\bin"
           New-Item -ItemType Directory -Force -Path $popplerTarget | Out-Null
