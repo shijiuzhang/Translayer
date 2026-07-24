@@ -31,8 +31,12 @@ jobs:
           choco install tesseract -y --no-progress
           choco install poppler -y --no-progress
           "C:\Program Files\Tesseract-OCR" >> $env:GITHUB_PATH
-          $pdftoppm = Get-ChildItem -Path $env:ChocolateyInstall, "C:\tools" -Recurse -Filter pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $pdftoppm) { throw "pdftoppm.exe not found after installing poppler" }
+          $popplerRoots = @("C:\ProgramData\chocolatey\lib\poppler", "C:\tools") | Where-Object { Test-Path $_ }
+          $pdftoppm = Get-ChildItem -Path $popplerRoots -Recurse -Filter pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $pdftoppm) {
+            Get-ChildItem -Path "C:\ProgramData\chocolatey\lib\poppler" -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object FullName
+            throw "pdftoppm.exe not found after installing poppler"
+          }
           $pdftoppm.Directory.FullName >> $env:GITHUB_PATH
 
       - name: Install dependencies
@@ -79,7 +83,8 @@ jobs:
             }
           }
 
-          $pdftoppm = Get-ChildItem -Path $env:ChocolateyInstall, "C:\tools" -Recurse -Filter pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          $popplerRoots = @("C:\ProgramData\chocolatey\lib\poppler", "C:\tools") | Where-Object { Test-Path $_ }
+          $pdftoppm = Get-ChildItem -Path $popplerRoots -Recurse -Filter pdftoppm.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $pdftoppm) { throw "pdftoppm.exe not found after installing poppler" }
           $popplerTarget = "$packageDir\tools\poppler\bin"
           New-Item -ItemType Directory -Force -Path $popplerTarget | Out-Null
