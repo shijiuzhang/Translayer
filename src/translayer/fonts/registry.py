@@ -6,17 +6,28 @@ from pathlib import Path
 from PIL import ImageFont
 
 _FONT_EXTENSIONS = ("*.ttf", "*.ttc", "*.otf")
-_SEARCH_ROOTS = (Path("/usr/share/fonts"), Path.home() / ".fonts", Path.home() / ".local/share/fonts")
+_SEARCH_ROOTS = (
+    Path("/usr/share/fonts"),
+    Path.home() / ".fonts",
+    Path.home() / ".local/share/fonts",
+    Path("C:/Windows/Fonts"),
+    Path.home() / "AppData/Local/Microsoft/Windows/Fonts",
+)
 
 # Confirmed on the milestone environment via fc-list: Noto Sans CJK SC lives here.
 _PRIMARY_CJK_CANDIDATES = (
     Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
     Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"),
     Path("/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc"),
+    Path("C:/Windows/Fonts/msyh.ttc"),
+    Path("C:/Windows/Fonts/simsun.ttc"),
+    Path("C:/Windows/Fonts/Deng.ttf"),
 )
 _PRIMARY_LATIN_CANDIDATES = (
     Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
     Path("/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf"),
+    Path("C:/Windows/Fonts/arial.ttf"),
+    Path("C:/Windows/Fonts/segoeui.ttf"),
 )
 _CJK_LANG_PREFIXES = ("zh", "ja", "ko")
 
@@ -46,6 +57,11 @@ class FontRegistry:
             "noto sans cjk sc",
             "notosanscjk",
             "noto sans cjk",
+            "msyh",
+            "microsoft yahei",
+            "simsun",
+            "nsimsun",
+            "deng",
             "wqy",
             "wenquanyi",
         )
@@ -53,7 +69,13 @@ class FontRegistry:
 
     def _discover_latin_font(self) -> Path | None:
         candidates = self._font_files()
-        preferred_names = ("dejavusans.ttf", "dejavu sans", "dejavusans")
+        preferred_names = (
+            "dejavusans.ttf",
+            "dejavu sans",
+            "dejavusans",
+            "arial.ttf",
+            "segoeui.ttf",
+        )
         return self._first_name_match(candidates, preferred_names)
 
     @staticmethod

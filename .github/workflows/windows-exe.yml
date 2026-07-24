@@ -25,6 +25,12 @@ jobs:
       - name: Set up Python 3.11
         run: uv python install 3.11
 
+      - name: Install Windows OCR tools
+        shell: pwsh
+        run: |
+          choco install tesseract -y --no-progress
+          "C:\Program Files\Tesseract-OCR" >> $env:GITHUB_PATH
+
       - name: Install dependencies
         run: |
           uv pip install --system -e ".[dev,gemini]"
